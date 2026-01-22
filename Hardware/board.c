@@ -22,7 +22,7 @@ void nvic_init(void)
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_Init(&NVIC_InitStructure);
 }
 
@@ -37,7 +37,7 @@ void clock_init(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
 
 	// 使能USART1外设时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 
 	// 禁用JTAG
 	GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
@@ -55,12 +55,12 @@ void usart_init(void)
 **********************************************************/
 	// PA9 - USART1_TX
 	GPIO_InitTypeDef  GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;				/* 复用推挽输出 */
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	// PA10 - USART1_RX
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;					/* 浮空输入 */
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
@@ -74,24 +74,24 @@ void usart_init(void)
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
-	USART_Init(USART1, &USART_InitStructure);
+	USART_Init(USART2, &USART_InitStructure);
 
 /**********************************************************
 ***	清除USART1中断
 **********************************************************/
 	USART1->SR; USART1->DR;
-	USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+	USART_ClearITPendingBit(USART2, USART_IT_RXNE);
 
 /**********************************************************
 ***	使能USART1中断
 **********************************************************/	
-	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-	USART_ITConfig(USART1, USART_IT_IDLE, ENABLE);
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	USART_ITConfig(USART2, USART_IT_IDLE, ENABLE);
 
 /**********************************************************
 ***	使能USART1
 **********************************************************/
-	USART_Cmd(USART1, ENABLE);
+	USART_Cmd(USART2, ENABLE);
 }
 
 /**

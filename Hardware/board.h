@@ -2,7 +2,7 @@
 #define __BOARD_H
 
 #include "stm32f10x.h" 
-#include "delay.h"
+#include "Delay.h"
 
 /**********************************************************
 ***	Emm_V5.0步进闭环控制例程
