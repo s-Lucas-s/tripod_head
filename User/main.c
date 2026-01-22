@@ -27,7 +27,7 @@ float pos = 0.0f, Motor_Cur_Pos = 0.0f;
 int main(void)
 {
     OLED_Init();
-    Timer_Init();
+    //Timer_Init();
     // 初始化板载外设
     board_init();
 
