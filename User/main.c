@@ -5,6 +5,7 @@
 #include "Delay.h"
 #include "stm32f10x.h" // Device header
 #include "usart.h"
+#include "Serial.h"
 
 /**********************************************************
 ***	Emm_V5.0步进闭环控制例程
@@ -28,7 +29,18 @@ int main(void)
 {
     uint8_t i = 0;
     OLED_Init();
-    Timer_Init();
+    Serial_Init();
+    OLED_ShowString(1,1,"x:",OLED_8X16); 
+    OLED_ShowString(1,17,"y:",OLED_8X16); 
+    OLED_ShowString(1,33,"z:",OLED_8X16); 
+    while(1)
+    {
+        OLED_ShowNum(17,1,center_x,4,OLED_8X16);//RxBuffer1[2]
+        OLED_ShowNum(17,17,center_y,4,OLED_8X16);//RxBuffer1[2]
+        OLED_ShowNum(17,33,z,4,OLED_8X16);//RxBuffer1[2]
+        OLED_Update();
+    }
+/*    Timer_Init();
     // 初始化板载外设
     Timer3_Start();
     while (1)
@@ -43,10 +55,11 @@ int main(void)
         }
         delay_ms(1000);
     }
+*/ 
     board_init();
 
     // 位置模式：方向CW，速度1000RPM，加速度0（不使用加减速直接启动），脉冲数3200（16细分下发送3200个脉冲电机转一圈），相对运动
-    Emm_V5_Vel_Control(1, 0, 1000, 0, 0);
+    Emm_V5_Vel_Control(1, 0,50, 0, 0);
 
     // 等待返回命令，命令数据缓存在数组rxCmd上，长度为rxCount
     while (rxFrameFlag == false)
