@@ -1,4 +1,5 @@
 #include "PID.h"
+#include "Timer.h"
 #include "stm32f10x.h"
 
 #define x_Kp 1
@@ -42,6 +43,7 @@ void PID_Control(int16_t xerr, int16_t yerr, int64_t *x_out, int64_t *y_out)
 
     *x_out = v_x_out;
     *y_out = v_y_out;
+    Timer3_Clear();
 }
 
 /**
@@ -57,7 +59,7 @@ void PID_Control(int16_t xerr, int16_t yerr, int64_t *x_out, int64_t *y_out)
 void Vertical_out(int64_t *x_out, int64_t *y_out)
 {
     uint64_t time_interval = 0;
-
+    time_interval=Timer3_Read();
     *x_out = (Vertical_x_last * L) / (Get_square(L) + Get_square(Vertical_x_last * time_interval));
 
     *y_out = (Vertical_y_last * L) / (Get_square(L) + Get_square(Vertical_x_last * time_interval));

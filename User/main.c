@@ -26,9 +26,23 @@ float pos = 0.0f, Motor_Cur_Pos = 0.0f;//pos存储从驱动器读取的原始位
 
 int main(void)
 {
+    uint8_t i = 0;
     OLED_Init();
-    //Timer_Init();
+    Timer_Init();
     // 初始化板载外设
+    Timer3_Start();
+    while (1)
+    {
+        i++;
+        OLED_ShowNum(1,1,Timer3_Read(),10,OLED_6X8);
+        OLED_Update();
+        if(i>=10)
+        {
+            Timer3_Clear();
+            i = 0;
+        }
+        delay_ms(1000);
+    }
     board_init();
 
     // 位置模式：方向CW，速度1000RPM，加速度0（不使用加减速直接启动），脉冲数3200（16细分下发送3200个脉冲电机转一圈），相对运动

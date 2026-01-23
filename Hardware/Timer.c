@@ -1,4 +1,3 @@
-#include "stm32f10x.h"
 #include "Timer.h"
 
 uint32_t g_timer3_count = 0;//全局变量：累计即使次数（中断100ms，计数+1）
@@ -32,7 +31,7 @@ void Timer_Init(void)															//TIM3用以定时中断
 }                                                                   
                                                                     
 /*中断函数*/
-/* void TIM3_IRQHandler(void)                                          
+void TIM3_IRQHandler(void)                                          
 {                                                                   
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET)
 	{
