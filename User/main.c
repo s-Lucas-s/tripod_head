@@ -32,7 +32,7 @@ int main(void)
     board_init();
 
     // 位置模式：方向CW，速度1000RPM，加速度0（不使用加减速直接启动），脉冲数3200（16细分下发送3200个脉冲电机转一圈），相对运动
-    Emm_V5_Vel_Control(1, 0, 10, 0, 0);
+    Emm_V5_Vel_Control(1, 0, 1000, 0, 0);
 
     // 等待返回命令，命令数据缓存在数组rxCmd上，长度为rxCount
     while (rxFrameFlag == false)
