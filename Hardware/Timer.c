@@ -1,6 +1,8 @@
 #include "stm32f10x.h"
 #include "Timer.h"
 
+uint32_t g_timer3_count = 0;//全局变量：累计即使次数（中断100ms，计数+1）
+
 void Timer_Init(void)															//TIM3用以定时中断
 {                                                                   		
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3,ENABLE);							//打开时钟
@@ -25,16 +27,52 @@ void Timer_Init(void)															//TIM3用以定时中断
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority=2;             				//指定NVIC线路的响应优先级为1
 	NVIC_Init(&NVIC_InitStructure);                              				//将结构体变量交给NVIC_Init，配置NVIC外设
 	                                                                
-	TIM_Cmd(TIM3,ENABLE);                                        				//使能TIM3
+//	TIM_Cmd(TIM3,ENABLE);                                        				//使能TIM3
 	                                                                
 }                                                                   
                                                                     
 /*中断函数*/
 void TIM3_IRQHandler(void)                                          
 {                                                                   
-	if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
+	if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET)
 	{
-		
-		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+		g_timer3_count++;
+		TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
 	}
 }
+
+/**
+ * @brief  启动TIM3计时（主函数发送“开始计时”信号）
+ * @param  无
+ * @retval 无
+ */
+void Timer3_Start(void)
+{
+	g_timer3_count = 0;				//启动前计时清零
+	TIM_SetCounter(TIM3,0);			//重置TIM3硬件计数器
+	TIM_Cmd(TIM3,ENABLE);			//使能TIM3，开始计时
+}
+
+/**
+ * @brief  读取当前累计计时时间（单位：100ms）
+ * @param  无
+ * @retval 无
+ */
+uint32_t Timer3_Read(void)
+{
+	return g_timer3_count;			
+}
+
+/**
+ * @brief  清除TIM3计时时间
+ * @param  无
+ * @retval 无
+ */
+void Timer3_Clear(void)
+{
+	TIM_ITConfig(TIM3, TIM_IT_Update, DISABLE); // 关中断防止清零被打断
+	g_timer3_count = 0;				// 清零软件计时值
+	TIM_SetCounter(TIM3, 0);       	// 清零硬件计数器
+	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);  // 重新开启中断
+}
+
