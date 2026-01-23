@@ -30,11 +30,11 @@ void Timer_Init(void)															//TIM3用以定时中断
 }                                                                   
                                                                     
 /*中断函数*/
-void TIM3_IRQHandler(void)                                          
+/* void TIM3_IRQHandler(void)                                          
 {                                                                   
 	if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
 	{
 		
 		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
 	}
-}
+} */
