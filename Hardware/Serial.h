@@ -7,6 +7,6 @@
 extern uint8_t center_x,center_y,z;
 
 void Serial_Init(void);
-void USART1_IRQHandler(void);			 
+void USART3_IRQHandler(void);			 
 
 #endif

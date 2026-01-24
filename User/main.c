@@ -1,12 +1,3 @@
-#include "Emm_V5.h"
-#include "OLED.h"
-#include "Timer.h"
-#include "board.h"
-#include "Delay.h"
-#include "stm32f10x.h" // Device header
-#include "usart.h"
-#include "Serial.h"
-
 #include "main.h"
 /**********************************************************
 ***	Emm_V5.0步进闭环控制例程
@@ -31,17 +22,19 @@ int main(void)
     board_init();
     OLED_Init();
     Serial_Init();
-    OLED_ShowString(1,1,"x:",OLED_8X16); 
+    /* OLED_ShowString(1,1,"x:",OLED_8X16); 
     OLED_ShowString(1,17,"y:",OLED_8X16); 
-    OLED_ShowString(1,33,"z:",OLED_8X16); 
+    OLED_ShowString(1,33,"z:",OLED_8X16);
+   
+    
     while(1)
     {
         OLED_ShowNum(17,1,center_x,4,OLED_8X16);//RxBuffer1[2]
         OLED_ShowNum(17,17,center_y,4,OLED_8X16);//RxBuffer1[2]
         OLED_ShowNum(17,33,z,4,OLED_8X16);//RxBuffer1[2]
-        OLED_Update();
-    }
-/*    Timer_Init();
+       OLED_Update();
+    } */
+    Timer_Init();
     // 初始化板载外设
     Timer3_Start();
     OLED_ShowString(0, 0, "Holle!", OLED_8X16);
@@ -55,7 +48,7 @@ int main(void)
         if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle))
         {
             Emm_V5_Stop_Now(0, 0);
-            // Wait(20);
+            Wait(20);
             Stop_flag = 1;
         }
         OLED_ShowFloatNum(0, 0, x_angle, 3, 3, OLED_8X16);
@@ -63,10 +56,10 @@ int main(void)
         OLED_Update();
     }
 }
-
+/*
 #ifdef __ARMCC_VERSION
 #pragma diag_suppress = 69
-#endif
+#endif*/
 static int32_t x_out = 0;
 static int32_t y_out = 0;
 /*中断函数*/
@@ -98,14 +91,16 @@ void TIM2_IRQHandler(void)
                 Wait(0);
             }
             Emm_V5_Synchronous_motion(0);
+                Wait(0);
         }
 
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }
 }
+/* 
 #ifdef __ARMCC_VERSION
 #pragma diag_default = 69
-#endif
+#endif*/
 
 float Check_angle(uint8_t addr)
 {

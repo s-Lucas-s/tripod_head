@@ -10,6 +10,7 @@
 #include "Timer.h"
 #include "board.h"
 #include "usart.h"
+#include "Serial.h"
 
 /* ————————————变量———————————— */
 extern bool Stop_flag;

@@ -23,7 +23,7 @@ static int64_t Vertical_y_last = 0;
  * @param y_out y轴输出
  */
 
-void PID_Control(int16_t xerr, int16_t yerr, int64_t *x_out, int64_t *y_out)
+void PID_Control(int16_t xerr, int16_t yerr)
 {
 
     static int64_t v_x_out = 0;
@@ -41,8 +41,6 @@ void PID_Control(int16_t xerr, int16_t yerr, int64_t *x_out, int64_t *y_out)
     v_y_out = y_Kp * xerr + y_Kd * Vertical_y_last;
     Vertical_y_last = v_y_temp;
 
-    *x_out = v_x_out;
-    *y_out = v_y_out;
     Timer3_Clear();
 }
 
