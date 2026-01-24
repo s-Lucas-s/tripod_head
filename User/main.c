@@ -1,3 +1,12 @@
+#include "Emm_V5.h"
+#include "OLED.h"
+#include "Timer.h"
+#include "board.h"
+#include "Delay.h"
+#include "stm32f10x.h" // Device header
+#include "usart.h"
+#include "Serial.h"
+
 #include "main.h"
 /**********************************************************
 ***	Emm_V5.0步进闭环控制例程
@@ -21,7 +30,19 @@ int main(void)
     float y_angle = 0;
     board_init();
     OLED_Init();
-    Timer_Init();
+    Serial_Init();
+    OLED_ShowString(1,1,"x:",OLED_8X16); 
+    OLED_ShowString(1,17,"y:",OLED_8X16); 
+    OLED_ShowString(1,33,"z:",OLED_8X16); 
+    while(1)
+    {
+        OLED_ShowNum(17,1,center_x,4,OLED_8X16);//RxBuffer1[2]
+        OLED_ShowNum(17,17,center_y,4,OLED_8X16);//RxBuffer1[2]
+        OLED_ShowNum(17,33,z,4,OLED_8X16);//RxBuffer1[2]
+        OLED_Update();
+    }
+/*    Timer_Init();
+    // 初始化板载外设
     Timer3_Start();
     OLED_ShowString(0, 0, "Holle!", OLED_8X16);
     OLED_Update();
