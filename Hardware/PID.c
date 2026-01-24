@@ -56,12 +56,13 @@ void PID_Control(int16_t xerr, int16_t yerr, int64_t *x_out, int64_t *y_out)
  *        w(t)=(v_0*L)/(L^2+v_0^2*t^2 )
  */
 
-void Vertical_out(int64_t *x_out, int64_t *y_out)
+void Vertical_out(int32_t *x_out, int32_t *y_out)
 {
-    uint64_t time_interval = 0;
+    uint32_t time_interval = 0;
     time_interval=Timer3_Read();
     *x_out = (Vertical_x_last * L) / (Get_square(L) + Get_square(Vertical_x_last * time_interval));
 
     *y_out = (Vertical_y_last * L) / (Get_square(L) + Get_square(Vertical_x_last * time_interval));
 }
+
 
