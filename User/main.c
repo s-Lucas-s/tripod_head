@@ -1,11 +1,4 @@
-#include "Emm_V5.h"
-#include "OLED.h"
-#include "Timer.h"
-#include "board.h"
-#include "Delay.h"
-#include "stm32f10x.h" // Device header
-#include "usart.h"
-
+#include "main.h"
 /**********************************************************
 ***	Emm_V5.0步进闭环控制例程
 ***	编写作者：ZHANGDATOU
@@ -14,9 +7,7 @@
 ***	CSDN博客：http s://blog.csdn.net/zhangdatou666
 ***	qq交流群：262438510
 **********************************************************/
-
-// 定义实时位置全局变量
-float pos = 0.0f, Motor_Cur_Pos = 0.0f;//pos存储从驱动器读取的原始位置数值，Motor_Cur_Pos转换后的电机当前位置（角度值）
+bool Stop_flag = 0;
 
 /**
  *	@brief		MAIN函数
@@ -26,66 +17,89 @@ float pos = 0.0f, Motor_Cur_Pos = 0.0f;//pos存储从驱动器读取的原始位
 
 int main(void)
 {
-    uint8_t i = 0;
     OLED_Init();
     Timer_Init();
-    // 初始化板载外设
     Timer3_Start();
-    while (1)
-    {
-        i++;
-        OLED_ShowNum(1,1,Timer3_Read(),10,OLED_6X8);
-        OLED_Update();
-        if(i>=10)
-        {
-            Timer3_Clear();
-            i = 0;
-        }
-        delay_ms(1000);
-    }
     board_init();
 
-    // 位置模式：方向CW，速度1000RPM，加速度0（不使用加减速直接启动），脉冲数3200（16细分下发送3200个脉冲电机转一圈），相对运动
-    Emm_V5_Vel_Control(1, 0, 1000, 0, 0);
+    while (1)
+    {
+        if (Check_angle(1) > ABS(Max_x_angle) || Check_angle(2) > ABS(Max_x_angle))
+        {
+            Emm_V5_Stop_Now(0, 0);
+            Wait(20);
+            Stop_flag = 1;
+        }
+    }
+}
 
-    // 等待返回命令，命令数据缓存在数组rxCmd上，长度为rxCount
-    while (rxFrameFlag == false)
-        ;
-    rxFrameFlag = false;
+#ifdef __ARMCC_VERSION
+#pragma diag_suppress = 69
+#endif
+static int32_t x_out = 0;
+static int32_t y_out = 0;
+/*中断函数*/
+void TIM2_IRQHandler(void)
+{
+    if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
+    {
+        if (!Stop_flag)
+        {
+#ifdef __ARMCC_VERSION
+#pragma diag_suppress = 177
+#endif
+            Vertical_out(&x_out, &y_out);
+            if (x_out >= 0)
+            {
+                Emm_V5_Pos_Control(1, 0, (uint16_t)x_out, 500, 16000, 0, 0);
+                Wait(0);
+            }
+            else if (x_out < 0)
+            {
+                Emm_V5_Pos_Control(1, 1, (uint16_t)(-x_out), 500, 16000, 0, 0);
+                Wait(0);
+            }
+            if (y_out >= 0)
+            {
+                Emm_V5_Pos_Control(2, 0, (uint16_t)y_out, 500, 14000, 0, 0);
+                Wait(0);
+            }
+            else if (y_out < 0)
+            {
+                Emm_V5_Pos_Control(2, 1, (uint16_t)(-y_out), 500, 14000, 0, 0);
+                Wait(0);
+            }
+        }
 
-    // 延时2秒，等待运动完成
-    delay_ms(2000);
-    // 设置当前位置为单圈回零的零点位置，并存储到芯片上
-    Emm_V5_Origin_Set_O(1, 1);
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+    }
+}
+#ifdef __ARMCC_VERSION
+#pragma diag_default = 69
+#endif
 
-    // 读取电机实时位置
-    Emm_V5_Read_Sys_Params(1, S_CPOS);
+float Check_angle(uint8_t addr)
+{
+    float Check_pos = 0.0f, Check_Motor_Cur_Pos = 0.0f;
 
-    // 等待返回命令，命令数据缓存在数组rxCmd上，长度为rxCount
-    while (rxFrameFlag == false)
-        ;
-    rxFrameFlag = false;
-
-    // 校验地址、功能码、返回数据长度，校验成功则计算当前位置角度
-    if (rxCmd[0] == 1 && rxCmd[1] == 0x36 && rxCount == 8)
+    Emm_V5_Read_Sys_Params(addr, S_CPOS);
+    Wait(20);
+    if (rxCmd[0] == addr && rxCmd[1] == 0x36 && rxCount == 8)
     {
         // 拼接成uint32_t类型
-        pos = (uint32_t)(((uint32_t)rxCmd[3] << 24) |
-                         ((uint32_t)rxCmd[4] << 16) |
-                         ((uint32_t)rxCmd[5] << 8) |
-                         ((uint32_t)rxCmd[6] << 0));
+        Check_pos = (uint32_t)(((uint32_t)rxCmd[3] << 24) |
+                               ((uint32_t)rxCmd[4] << 16) |
+                               ((uint32_t)rxCmd[5] << 8) |
+                               ((uint32_t)rxCmd[6] << 0));
 
         // 转换成角度
-        Motor_Cur_Pos = (float)pos * 360.0f / 65536.0f;
+        Check_Motor_Cur_Pos = (float)Check_pos * 360.0f / 65536.0f;
 
         // 符号
         if (rxCmd[2])
         {
-            Motor_Cur_Pos = -Motor_Cur_Pos;
+            Check_Motor_Cur_Pos = -Check_Motor_Cur_Pos;
         }
     }
-
-    while (1)
-    {
-    }
+    return Check_Motor_Cur_Pos;
 }
