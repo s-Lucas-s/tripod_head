@@ -45,9 +45,6 @@ void TIM2_IRQHandler(void)
     {
         if (!Stop_flag)
         {
-#ifdef __ARMCC_VERSION
-#pragma diag_suppress = 177
-#endif
             Vertical_out(&x_out, &y_out);
             if (x_out >= 0)
             {
