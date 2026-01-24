@@ -17,19 +17,29 @@ bool Stop_flag = 0;
 
 int main(void)
 {
+    float x_angle = 0;
+    float y_angle = 0;
+    board_init();
     OLED_Init();
     Timer_Init();
     Timer3_Start();
-    board_init();
+    OLED_ShowString(0, 0, "Holle!", OLED_8X16);
+    OLED_Update();
 
     while (1)
     {
-        if (Check_angle(1) > ABS(Max_x_angle) || Check_angle(2) > ABS(Max_x_angle))
+        x_angle = Check_angle(1);
+        y_angle = Check_angle(2);
+
+        if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle))
         {
             Emm_V5_Stop_Now(0, 0);
-            Wait(20);
+            // Wait(20);
             Stop_flag = 1;
         }
+        OLED_ShowFloatNum(0, 0, x_angle, 3, 3, OLED_8X16);
+        OLED_ShowFloatNum(0, 16, y_angle, 3, 3, OLED_8X16);
+        OLED_Update();
     }
 }
 
@@ -48,24 +58,25 @@ void TIM2_IRQHandler(void)
             Vertical_out(&x_out, &y_out);
             if (x_out >= 0)
             {
-                Emm_V5_Pos_Control(1, 0, (uint16_t)x_out, 500, 16000, 0, 0);
+                Emm_V5_Pos_Control(1, 0, (uint16_t)x_out, 0, 16000, 0, 1);
                 Wait(0);
             }
             else if (x_out < 0)
             {
-                Emm_V5_Pos_Control(1, 1, (uint16_t)(-x_out), 500, 16000, 0, 0);
+                Emm_V5_Pos_Control(1, 1, (uint16_t)(-x_out), 0, 16000, 0, 1);
                 Wait(0);
             }
             if (y_out >= 0)
             {
-                Emm_V5_Pos_Control(2, 0, (uint16_t)y_out, 500, 14000, 0, 0);
+                Emm_V5_Pos_Control(2, 0, (uint16_t)y_out, 0, 14000, 0, 1);
                 Wait(0);
             }
             else if (y_out < 0)
             {
-                Emm_V5_Pos_Control(2, 1, (uint16_t)(-y_out), 500, 14000, 0, 0);
+                Emm_V5_Pos_Control(2, 1, (uint16_t)(-y_out), 0, 14000, 0, 1);
                 Wait(0);
             }
+            Emm_V5_Synchronous_motion(0);
         }
 
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
@@ -80,7 +91,8 @@ float Check_angle(uint8_t addr)
     float Check_pos = 0.0f, Check_Motor_Cur_Pos = 0.0f;
 
     Emm_V5_Read_Sys_Params(addr, S_CPOS);
-    Wait(20);
+    // Wait(20);
+    delay_ms(20);
     if (rxCmd[0] == addr && rxCmd[1] == 0x36 && rxCount == 8)
     {
         // 拼接成uint32_t类型

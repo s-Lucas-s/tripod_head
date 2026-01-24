@@ -11,7 +11,6 @@ virtualFolder:
     - name: Start
       files:
         - path: Start/startup_stm32f10x_md.s
-        - path: Start/core_cm3.c
         - path: Start/core_cm3.h
         - path: Start/stm32f10x.h
         - path: Start/system_stm32f10x.c
@@ -87,6 +86,8 @@ virtualFolder:
         - path: Hardware/Timer.h
         - path: Hardware/usart.c
         - path: Hardware/usart.h
+        - path: Hardware/PID.c
+        - path: Hardware/PID.h
       folders: []
     - name: User
       files:
@@ -94,6 +95,7 @@ virtualFolder:
         - path: User/stm32f10x_conf.h
         - path: User/stm32f10x_it.c
         - path: User/stm32f10x_it.h
+        - path: User/main.h
       folders: []
 dependenceList: []
 outDir: Objects

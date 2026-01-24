@@ -13,7 +13,7 @@ void Timer_Init(void)															//TIM3用以定时中断
     TIM_TimeBaseInitTypeDef TIM_TimerBaseInitStructure;
 	TIM_TimerBaseInitStructure.TIM_ClockDivision=TIM_CKD_DIV1;					//选择1分频（不分频）
 	TIM_TimerBaseInitStructure.TIM_CounterMode=TIM_CounterMode_Up;				//计数模式：向上计数
-	TIM_TimerBaseInitStructure.TIM_Period=1000-1;								//ARR（自动重装载器值）100ms
+	TIM_TimerBaseInitStructure.TIM_Period=10000-1;								//ARR（自动重装载器值）100ms
 	TIM_TimerBaseInitStructure.TIM_Prescaler=7200-1;							//PSC（预分频器）
 	TIM_TimerBaseInitStructure.TIM_RepetitionCounter=0;							//重复计数器（高级定时器使用）
 	TIM_TimeBaseInit(TIM2,&TIM_TimerBaseInitStructure);
