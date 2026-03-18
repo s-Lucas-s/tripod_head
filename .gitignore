@@ -1,6 +1,5 @@
 # dot files
-/.vscode/launch.json
-/.vscode/settings.json
+/.vscode
 /.eide/log
 /.eide.usr.ctx.json
 
@@ -17,3 +16,4 @@
 #MDK
 /MDK
 
+.clangd

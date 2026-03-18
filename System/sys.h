@@ -1,5 +1,5 @@
-#ifndef __MAIN_H
-#define __MAIN_H
+#ifndef __SYS_H
+#define __SYS_H
 
 /* ——————————include—————————— */
 #include "stm32f10x.h" // Device header
@@ -11,6 +11,7 @@
 #include "board.h"
 #include "usart.h"
 #include "Serial.h"
+#include "Key.h"
 
 /* ————————————变量———————————— */
 extern bool Stop_flag;
@@ -26,6 +27,7 @@ extern bool Stop_flag;
 #define Max_x_angle 180
 
 /* ————————————函数———————————— */
+void nvic_init(void);
 float Check_angle(uint8_t addr);
 
 #endif

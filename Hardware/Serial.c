@@ -40,15 +40,6 @@ void Serial_Init(void)
 	
 	USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
 	
-	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-	
-	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-	NVIC_Init(&NVIC_InitStructure);
-	
 	USART_Cmd(USART3, ENABLE);
 }
 void USART3_IRQHandler(void)			 
@@ -64,21 +55,20 @@ void USART3_IRQHandler(void)
 			
 				USART_ClearITPendingBit(USART3,USART_IT_RXNE);   //清除中断标志
 				com_data = USART_ReceiveData(USART3);
-// 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0x2C），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer1[0]的位置，RxCounter1加一。
+				// 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0x2C），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer1[0]的位置，RxCounter1加一。
 				if(RxState==0&&com_data==0x2C)  //0x2c帧头
 				{
-					
 					RxState=1;
 					RxBuffer1[RxCounter1++]=com_data;
 				}
 		
-// 当RXState处于1时，为接收帧头2模式。若接收到帧头2（0x12），将RXState置2，切换到保存数据模式，并将帧头2存入RxBuffer1[1]的位置，RxCounter1加一。
+				// 当RXState处于1时，为接收帧头2模式。若接收到帧头2（0x12），将RXState置2，切换到保存数据模式，并将帧头2存入RxBuffer1[1]的位置，RxCounter1加一。
 				else if(RxState==1&&com_data==0x12)  //0x12帧头
 				{
 					RxState=2;
 					RxBuffer1[RxCounter1++]=com_data;
 				}
-//当RXState处于2时，为保存数据模式。RxBuffer1[]将接收到的数据依次存入RxBuffer1[2]、RxBuffer1[3]、RxBuffer1[4]、RxBuffer1[5]中。当接收到第六位数据时，进行判断是否为帧尾（0x5B），若是帧尾分别保存数据RxBuffer1[2]、RxBuffer1[3]、RxBuffer1[4]到x、y、z中
+				//当RXState处于2时，为保存数据模式。RxBuffer1[]将接收到的数据依次存入RxBuffer1[2]、RxBuffer1[3]、RxBuffer1[4]、RxBuffer1[5]中。当接收到第六位数据时，进行判断是否为帧尾（0x5B），若是帧尾分别保存数据RxBuffer1[2]、RxBuffer1[3]、RxBuffer1[4]到x、y、z中
 				else if(RxState==2)
 				{
 					RxBuffer1[RxCounter1++]=com_data;
@@ -92,7 +82,7 @@ void USART3_IRQHandler(void)
 						RxCounter1 = 0;
 						RxState = 0;	
 					}
-//若是不是帧尾帧尾将会把RxState、RxCounter1和RxBuffer1[]全部置零做接收异常处理。
+					//若是不是帧尾帧尾将会把RxState、RxCounter1和RxBuffer1[]全部置零做接收异常处理。
 					else if(RxCounter1 > 6)            //接收异常
 					{
 						RxState = 0;

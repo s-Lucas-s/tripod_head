@@ -1,4 +1,4 @@
-#include "main.h"
+#include "sys.h"
 /**********************************************************
 ***	Emm_V5.0步进闭环控制例程
 ***	编写作者：ZHANGDATOU
@@ -19,23 +19,12 @@ int main(void)
 {
     float x_angle = 0;
     float y_angle = 0;
+    nvic_init();
+    Key_Init();
     board_init();
     OLED_Init();
     Serial_Init();
-    /* OLED_ShowString(1,1,"x:",OLED_8X16); 
-    OLED_ShowString(1,17,"y:",OLED_8X16); 
-    OLED_ShowString(1,33,"z:",OLED_8X16);
-   
-    
-    while(1)
-    {
-        OLED_ShowNum(17,1,center_x,4,OLED_8X16);//RxBuffer1[2]
-        OLED_ShowNum(17,17,center_y,4,OLED_8X16);//RxBuffer1[2]
-        OLED_ShowNum(17,33,z,4,OLED_8X16);//RxBuffer1[2]
-       OLED_Update();
-    } */
     Timer_Init();
-    // 初始化板载外设
     Timer3_Start();
     OLED_ShowString(0, 0, "Holle!", OLED_8X16);
     OLED_Update();
@@ -91,13 +80,13 @@ void TIM2_IRQHandler(void)
                 Wait(0);
             }
             Emm_V5_Synchronous_motion(0);
-                Wait(0);
+            Wait(0);
         }
 
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }
 }
-/* 
+/*
 #ifdef __ARMCC_VERSION
 #pragma diag_default = 69
 #endif*/

@@ -2,14 +2,20 @@
 #include "Timer.h"
 #include "stm32f10x.h"
 
-#define x_Kp 1
-#define x_Kd 1
+typedef struct parameter_pid
+{
+    int32_t kp;
+    int32_t ki;
+    int32_t kd;
+} pid_t;
 
-#define y_Kp 1
-#define y_Kd 1
+struct dimensionality
+{
+    pid_t x;
+    pid_t y;
+};
 
-#define L 1//调参
-#define Get_square(x) x*x
+#define Get_square(x) x *x
 
 static int64_t Vertical_x_last = 0;
 static int64_t Vertical_y_last = 0;
@@ -36,31 +42,9 @@ void PID_Control(int16_t xerr, int16_t yerr)
     v_x_out = x_Kp * xerr + x_Kd * Vertical_x_last;
     Vertical_x_last = v_x_temp;
 
-
     v_y_temp = v_y_out;
     v_y_out = y_Kp * xerr + y_Kd * Vertical_y_last;
     Vertical_y_last = v_y_temp;
 
     Timer3_Clear();
 }
-
-/**
- * @brief 速度校准
- *
- * @param x_out x轴输出
- * @param y_outy轴输出
- * 
- * @note 为了让光标速度在幕布上是匀速的，需要对角速度做函数变化，遵循
- *        w(t)=(v_0*L)/(L^2+v_0^2*t^2 )
- */
-
-void Vertical_out(int32_t *x_out, int32_t *y_out)
-{
-    uint32_t time_interval = 0;
-    time_interval=Timer3_Read();
-    *x_out = (Vertical_x_last * L) / (Get_square(L) + Get_square(Vertical_x_last * time_interval));
-
-    *y_out = (Vertical_y_last * L) / (Get_square(L) + Get_square(Vertical_x_last * time_interval));
-}
-
-

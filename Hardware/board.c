@@ -9,22 +9,7 @@
 ***	qq交流群：262438510
 **********************************************************/
 
-/**
-	* @brief   配置NVIC控制器
-	* @param   无
-	* @retval  无
-	*/
-void nvic_init(void)
-{	
-	// 4bit抢占优先级位
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-	NVIC_Init(&NVIC_InitStructure);
-}
+
 
 /**
 	*	@brief		外设时钟初始化
@@ -101,7 +86,6 @@ void usart_init(void)
 	*/
 void board_init(void)
 {
-	nvic_init();
 	clock_init();
 	usart_init();
 	delay_ms(2000);

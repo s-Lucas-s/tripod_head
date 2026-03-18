@@ -71,6 +71,8 @@ virtualFolder:
         - path: System/Delay.h
         - path: System/fifo.c
         - path: System/fifo.h
+        - path: System/sys.c
+        - path: System/sys.h
       folders: []
     - name: Hardware
       files:
@@ -88,6 +90,8 @@ virtualFolder:
         - path: Hardware/usart.h
         - path: Hardware/PID.c
         - path: Hardware/PID.h
+        - path: Hardware/Serial.c
+        - path: Hardware/Serial.h
       folders: []
     - name: User
       files:
@@ -95,7 +99,6 @@ virtualFolder:
         - path: User/stm32f10x_conf.h
         - path: User/stm32f10x_it.c
         - path: User/stm32f10x_it.h
-        - path: User/main.h
       folders: []
 dependenceList: []
 outDir: Objects
