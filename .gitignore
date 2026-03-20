@@ -1,4 +1,5 @@
 # dot files
+/.agents
 /.vscode
 /.eide/log
 /.eide.usr.ctx.json
@@ -16,4 +17,6 @@
 #MDK
 /MDK
 
+#clangd
+.clang-format
 .clangd

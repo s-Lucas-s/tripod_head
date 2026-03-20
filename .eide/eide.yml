@@ -92,6 +92,8 @@ virtualFolder:
         - path: Hardware/PID.h
         - path: Hardware/Serial.c
         - path: Hardware/Serial.h
+        - path: Hardware/Key.c
+        - path: Hardware/Key.h
       folders: []
     - name: User
       files:

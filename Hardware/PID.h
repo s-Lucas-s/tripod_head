@@ -2,7 +2,10 @@
 #define __PID_H
 
 #include "sys.h"
-void PID_Control(int16_t xerr, int16_t yerr);
+
+extern uint32_t Target_Vertical_x;
+extern uint32_t Target_Vertical_y;
+void PID_Control(int32_t xerr, int32_t yerr);
 
 #endif
 

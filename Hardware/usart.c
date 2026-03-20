@@ -14,7 +14,7 @@ __IO uint8_t rxCmd[FIFO_SIZE] = {0};
 __IO uint8_t rxCount = 0;
 
 /**
-	* @brief   USART1中断函数
+	* @brief   USART2中断函数
 	* @param   无
 	* @retval  无
 	*/
@@ -43,7 +43,11 @@ void USART2_IRQHandler(void)
 		USART2->SR; USART2->DR;
 
 		// 提取一帧数据命令
-		rxCount = fifo_queueLength(); for(i=0; i < rxCount; i++) { rxCmd[i] = fifo_deQueue(); }
+		rxCount = fifo_queueLength(); 
+		for(i=0; i < rxCount; i++) 
+		{ 
+			rxCmd[i] = fifo_deQueue(); 
+		}
 
 		// 一帧数据接收完成，置位帧标志位
 		rxFrameFlag = true;

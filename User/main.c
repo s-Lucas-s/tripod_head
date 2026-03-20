@@ -1,4 +1,6 @@
 #include "sys.h"
+
+bool Stop_flag = 0;
 /**********************************************************
 ***	Emm_V5.0步进闭环控制例程
 ***	编写作者：ZHANGDATOU
@@ -7,7 +9,6 @@
 ***	CSDN博客：http s://blog.csdn.net/zhangdatou666
 ***	qq交流群：262438510
 **********************************************************/
-bool Stop_flag = 0;
 
 /**
  *	@brief		MAIN函数
@@ -20,8 +21,8 @@ int main(void)
     float x_angle = 0;
     float y_angle = 0;
     nvic_init();
-    Key_Init();
     board_init();
+    Key_Init();
     OLED_Init();
     Serial_Init();
     Timer_Init();
@@ -34,10 +35,9 @@ int main(void)
         x_angle = Check_angle(1);
         y_angle = Check_angle(2);
 
-        if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle))
+        if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle)||Key_GetCode() == 1)
         {
             Emm_V5_Stop_Now(0, 0);
-            Wait(20);
             Stop_flag = 1;
         }
         OLED_ShowFloatNum(0, 0, x_angle, 3, 3, OLED_8X16);
@@ -49,43 +49,15 @@ int main(void)
 #ifdef __ARMCC_VERSION
 #pragma diag_suppress = 69
 #endif*/
-static int32_t x_out = 0;
-static int32_t y_out = 0;
 /*中断函数*/
 void TIM2_IRQHandler(void)
 {
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
     {
-        if (!Stop_flag)
-        {
-            Vertical_out(&x_out, &y_out);
-            if (x_out >= 0)
-            {
-                Emm_V5_Pos_Control(1, 0, (uint16_t)x_out, 0, 16000, 0, 1);
-                Wait(0);
-            }
-            else if (x_out < 0)
-            {
-                Emm_V5_Pos_Control(1, 1, (uint16_t)(-x_out), 0, 16000, 0, 1);
-                Wait(0);
-            }
-            if (y_out >= 0)
-            {
-                Emm_V5_Pos_Control(2, 0, (uint16_t)y_out, 0, 14000, 0, 1);
-                Wait(0);
-            }
-            else if (y_out < 0)
-            {
-                Emm_V5_Pos_Control(2, 1, (uint16_t)(-y_out), 0, 14000, 0, 1);
-                Wait(0);
-            }
-            Emm_V5_Synchronous_motion(0);
-            Wait(0);
-        }
-
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }
 }
+
 /*
 #ifdef __ARMCC_VERSION
 #pragma diag_default = 69
@@ -96,7 +68,6 @@ float Check_angle(uint8_t addr)
     float Check_pos = 0.0f, Check_Motor_Cur_Pos = 0.0f;
 
     Emm_V5_Read_Sys_Params(addr, S_CPOS);
-    // Wait(20);
     delay_ms(20);
     if (rxCmd[0] == addr && rxCmd[1] == 0x36 && rxCount == 8)
     {

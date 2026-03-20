@@ -17,12 +17,6 @@
 extern bool Stop_flag;
 
 /* —————————————宏————————————— */
-#define Wait(x)                       \
-    do {                              \
-        while (rxFrameFlag == false); \
-        rxFrameFlag = false;          \
-        delay_ms(x);                  \
-    } while (0)
 #define ABS(x)      ((x) >= 0 ? (x) : -(x))
 #define Max_x_angle 180
 
