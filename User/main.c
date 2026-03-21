@@ -21,12 +21,12 @@ int main(void)
     float x_angle = 0;
     float y_angle = 0;
     nvic_init();
+    PID_Init();
     board_init();
     Key_Init();
     OLED_Init();
     Serial_Init();
     Timer_Init();
-    Timer3_Start();
     OLED_ShowString(0, 0, "Holle!", OLED_8X16);
     OLED_Update();
 
@@ -35,7 +35,7 @@ int main(void)
         x_angle = Check_angle(1);
         y_angle = Check_angle(2);
 
-        if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle)||Key_GetCode() == 1)
+        if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle) || Key_GetCode() == 1)
         {
             Emm_V5_Stop_Now(0, 0);
             Stop_flag = 1;
@@ -50,13 +50,13 @@ int main(void)
 #pragma diag_suppress = 69
 #endif*/
 /*中断函数*/
-void TIM2_IRQHandler(void)
+/* void TIM2_IRQHandler(void)
 {
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
     {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }
-}
+} */
 
 /*
 #ifdef __ARMCC_VERSION
