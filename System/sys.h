@@ -15,6 +15,8 @@
 
 /* ————————————变量———————————— */
 extern bool Stop_flag;
+extern int8_t Questionx;
+extern bool Power_on_flag;
 
 /* —————————————宏————————————— */
 #define ABS(x)      ((x) >= 0 ? (x) : -(x))

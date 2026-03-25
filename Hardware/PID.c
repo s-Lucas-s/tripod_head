@@ -159,7 +159,7 @@ int32_t Position_Loop_Control(Dimension_t Dimension, int32_t err, uint32_t inter
  */
 int32_t PID_x_Control(int32_t x_err, uint32_t interval_time)
 {
-    return Position_Loop_Control(x, x_err, Speed_Loop_Control(x, x_err, interval_time));
+    return Position_Loop_Control(x, x_err+Speed_Loop_Control(x, x_err, interval_time),interval_time );
 }
 
 /**
@@ -171,7 +171,7 @@ int32_t PID_x_Control(int32_t x_err, uint32_t interval_time)
  */
 int32_t PID_y_Control(int32_t y_err, uint32_t interval_time)
 {
-    return Position_Loop_Control(y, y_err, Speed_Loop_Control(y, y_err, interval_time));
+    return Position_Loop_Control(y, y_err+Speed_Loop_Control(y, y_err, interval_time),interval_time );
 }
 
 /**

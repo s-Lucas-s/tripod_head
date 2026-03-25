@@ -1,14 +1,10 @@
 #include "sys.h"
 
 bool Stop_flag = 0;
-/**********************************************************
-***	Emm_V5.0步进闭环控制例程
-***	编写作者：ZHANGDATOU
-***	技术支持：张大头闭环伺服
-***	淘宝店铺：https://zhangdatou.taobao.com
-***	CSDN博客：http s://blog.csdn.net/zhangdatou666
-***	qq交流群：262438510
-**********************************************************/
+bool Power_on_flag = 0;
+int8_t Questionx=0;
+
+
 
 /**
  *	@brief		MAIN函数
@@ -18,8 +14,8 @@ bool Stop_flag = 0;
 
 int main(void)
 {
-    float x_angle = 0;
-    float y_angle = 0;
+    // float x_angle = 0;
+    // float y_angle = 0;
     nvic_init();
     PID_Init();
     board_init();
@@ -32,16 +28,18 @@ int main(void)
 
     while (1)
     {
-        x_angle = Check_angle(1);
-        y_angle = Check_angle(2);
+        /*  x_angle = Check_angle(1);
+         y_angle = Check_angle(2);
 
-        if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle) || Key_GetCode() == 1)
-        {
-            Emm_V5_Stop_Now(0, 0);
-            Stop_flag = 1;
-        }
-        OLED_ShowFloatNum(0, 0, x_angle, 3, 3, OLED_8X16);
-        OLED_ShowFloatNum(0, 16, y_angle, 3, 3, OLED_8X16);
+         if (x_angle > ABS(Max_x_angle) || y_angle > ABS(Max_x_angle) || Key_GetCode() == 1)
+         {
+             Emm_V5_Stop_Now(0, 0);
+             Stop_flag = 1;
+         } */
+        /* OLED_ShowFloatNum(0, 0, x_angle, 3, 3, OLED_8X16);
+        OLED_ShowFloatNum(0, 16, y_angle, 3, 3, OLED_8X16); */
+        OLED_ShowFloatNum(0, 0, center_x, 3, 3, OLED_8X16);
+        OLED_ShowFloatNum(0, 16, center_y, 3, 3, OLED_8X16);
         OLED_Update();
     }
 }
