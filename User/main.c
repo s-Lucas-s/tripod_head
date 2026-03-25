@@ -2,9 +2,7 @@
 
 bool Stop_flag = 0;
 bool Power_on_flag = 0;
-int8_t Questionx=0;
-
-
+int8_t Questionx = 0;
 
 /**
  *	@brief		MAIN函数
@@ -48,13 +46,13 @@ int main(void)
 #pragma diag_suppress = 69
 #endif*/
 /*中断函数*/
-/* void TIM2_IRQHandler(void)
+void TIM2_IRQHandler(void)
 {
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
     {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }
-} */
+}
 
 /*
 #ifdef __ARMCC_VERSION

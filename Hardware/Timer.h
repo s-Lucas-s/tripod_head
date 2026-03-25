@@ -6,4 +6,3 @@ extern uint32_t g_timer3_count;
 
 void Timer_Init(void);
 #endif
-
