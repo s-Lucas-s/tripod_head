@@ -118,65 +118,115 @@ void handle_USART_BasicQuestion2(void)
     {
         RxBuffer.Array[RxCounter++] = com_data; // 数据填入共用体数组
         RxArrayCounter++;
-        if (RxArrayCounter < 9)
+        if (data_packet_count == 0)
         {
-            switch (RxArrayCounter)
+            if (RxArrayCounter)
             {
-            case 4:
-                RxCounter = 0;
-                src[0].x = RxBuffer.FloatNum;
-                break;
-            case 8:
-                RxCounter = 0;
-                src[0].y = RxBuffer.FloatNum;
-                break;
-            case 12:
-                RxCounter = 0;
-                src[1].x = RxBuffer.FloatNum;
-                break;
-            case 16:
-                RxCounter = 0;
-                src[1].y = RxBuffer.FloatNum;
-                break;
-            case 20:
-                RxCounter = 0;
-                src[2].x = RxBuffer.FloatNum;
-                break;
-            case 24:
-                RxCounter = 0;
-                src[2].y = RxBuffer.FloatNum;
-                break;
-            case 28:
-                RxCounter = 0;
-                src[3].x = RxBuffer.FloatNum;
-                break;
-            case 32:
-                RxCounter = 0;
-                src[3].y = RxBuffer.FloatNum;
-                break;
-            }
-        }
-        else if (RxArrayCounter == 33) // 收满帧尾（第10个字节）
-        {
-            if (com_data == 0x5A)
-            {
-                RxCounter = 0;
-                RxArrayCounter = 0;
-                RxState = 0;
-                if (!(calcHomography(src, dst, H)))
+                switch (RxArrayCounter)
                 {
-                    Serial_SendByte(0x01); // 接收到A5并发1（应答视觉端）
+                case 4:
+                    RxCounter = 0;
+                    src[0].x = RxBuffer.FloatNum;
+                    break;
+                case 8:
+                    RxCounter = 0;
+                    src[0].y = RxBuffer.FloatNum;
+                    break;
+                case 12:
+                    RxCounter = 0;
+                    src[1].x = RxBuffer.FloatNum;
+                    break;
+                case 16:
+                    RxCounter = 0;
+                    src[1].y = RxBuffer.FloatNum;
+                    break;
+                case 20:
+                    RxCounter = 0;
+                    src[2].x = RxBuffer.FloatNum;
+                    break;
+                case 24:
+                    RxCounter = 0;
+                    src[2].y = RxBuffer.FloatNum;
+                    break;
+                case 28:
+                    RxCounter = 0;
+                    src[3].x = RxBuffer.FloatNum;
+                    break;
+                case 32:
+                    RxCounter = 0;
+                    src[3].y = RxBuffer.FloatNum;
+                    break;
+                default:
+                    break;
                 }
             }
-            else
+            else if (RxArrayCounter == 33) // 收满帧尾（第10个字节）
             {
-                // 帧尾不对，立即重置，不用等 RxCounter > 10
-                RxState = 0;
+                if (com_data == 0x5A)
+                {
+                    RxCounter = 0;
+                    RxArrayCounter = 0;
+                    RxState = 0;
+                    if (!(calcHomography(src, dst, H)))
+                    {
+                        Serial_SendByte(0x01); // 接收到A5并发1（应答视觉端）
+                    }
+                }
+                else
+                {
+                    // 帧尾不对，立即重置，不用等 RxCounter > 10
+                    RxState = 0;
+                    RxCounter = 0;
+                    RxArrayCounter = 0;
+                    data_packet_count = 0;
+                    center_x = 0;
+                    center_y = 0;
+                }
+            }
+        } // -------------------- 分支2：B6目标包（目标坐标，8字节数据） --------------------
+        else
+        {
+            // 解析X坐标（前4字节）
+            if (RxArrayCounter == 4)
+            {
                 RxCounter = 0;
-                RxArrayCounter = 0;
-                data_packet_count = 0;
-                center_x = 0;
-                center_y = 0;
+                center_x = RxBuffer.FloatNum;
+            }
+            // 解析Y坐标（5-8字节）
+            else if (RxArrayCounter == 8)
+            {
+                RxCounter = 0;
+                center_y = RxBuffer.FloatNum;
+            }
+            // 收满8字节数据，第9字节为帧尾
+            else if (RxArrayCounter == 9)
+            {
+                // 校验B6包帧尾0x6B
+                if (com_data == 0x6B)
+                {
+                    // 【可选】标定后坐标转换：像素坐标→实际物理坐标
+                    // Point2D pixel_pt = {center_x, center_y};
+                    // Point2D real_pt;
+                    // visualToReal(H, pixel_pt, &real_pt);
+                    // PID_Control(real_pt.x, real_pt.y);
+
+                    // 直接执行PID控制（和第一题逻辑统一，需要坐标转换就用上面的代码）
+                    PID_Control(center_x, center_y);
+
+                    // 包接收完成，重置状态，准备下一次标定
+                    RxState = 0;
+                    RxCounter = 0;
+                    RxArrayCounter = 0;
+                    data_packet_count = 0;
+                }
+                else
+                {
+                    // 帧尾错误，全状态重置
+                    RxState = 0;
+                    RxCounter = 0;
+                    RxArrayCounter = 0;
+                    data_packet_count = 0;
+                }
             }
         }
     }
