@@ -1,76 +1,69 @@
 #include "PID.h"
 #include <math.h>
 
-#define Initial_time_threshold 500 // 初始时间阈值
-#define Integral_MAX 500000        // 积分限幅最大值
+/************************ 全局宏定义 ************************/
+#define Integral_MAX 500000        // PID积分限幅最大值，防止积分饱和失控
+#define MAX_SPEED 16000            // 电机最大输出限制，保护电机与机械结构
+#define PI 3.1415926f              // 圆周率，用于圆形轨迹计算，备用参数
 
-#define ratio_y 0.8     // Y轴低通滤波系数
-#define ratio_x ratio_y // X轴低通滤波系数
+/************************ 透视变换单应性矩阵 ************************/
+float H[3][3];                     // 3x3透视变换矩阵，用于视觉坐标→实际坐标转换
 
-// 维度枚举类型（X轴和Y轴）
+/************************ 枚举与结构体定义 ************************/
+// 控制维度枚举：区分X轴/Y轴控制
 typedef enum
 {
-    x,
-    y
+    x,                              // X轴控制
+    y                               // Y轴控制
 } Dimension_t;
 
-// PID参数结构体
+// PID参数结构体：封装位置环PID的比例/积分/微分系数
 typedef struct parameter_pid
 {
-    int32_t kp; // 比例系数
-    int32_t ki; // 积分系数
-    int32_t kd; // 微分系数
+    int32_t kp;                     // 比例系数：快速减小误差
+    int32_t ki;                     // 积分系数：消除静态误差
+    int32_t kd;                     // 微分系数：抑制震荡、提高响应速度
 } pid_t;
 
-// 串级控制环结构体（包含速度环和位置环）
-typedef struct Cascade_Control_Loop
-{
-    pid_t Speed_Loop;    // 速度环PID参数
-    pid_t Position_Loop; // 位置环PID参数
-} CCL_t;
-
-CCL_t Dimension_x; // X轴控制环
-CCL_t Dimension_y; // Y轴控制环
+/************************ 全局PID参数实体 ************************/
+pid_t Position_PID_x;               // X轴位置环PID参数
+pid_t Position_PID_y;               // Y轴位置环PID参数
 
 /**
- * @brief 初始化PID参数
+ * @brief  PID参数初始化函数
+ * @note   上电默认清零PID参数，调试时再赋值
+ * @retval 无
  */
 void PID_Init(void)
 {
-    Dimension_x.Position_Loop.kp = 0;
-    Dimension_x.Position_Loop.ki = 0;
-    Dimension_x.Position_Loop.kd = 0;
-
-    Dimension_x.Speed_Loop.kp = 0;
-    Dimension_x.Speed_Loop.ki = 0;
-    Dimension_x.Speed_Loop.kd = 0;
-
-    Dimension_y.Position_Loop.kp = 0;
-    Dimension_y.Position_Loop.ki = 0;
-    Dimension_y.Position_Loop.kd = 0;
-
-    Dimension_y.Speed_Loop.kp = 0;
-    Dimension_y.Speed_Loop.ki = 0;
-    Dimension_y.Speed_Loop.kd = 0;
+    // Y轴PID初始化为0，X轴同理可添加初始化
+    Position_PID_y.kp=0;
+    Position_PID_y.ki=0;
+    Position_PID_y.kd=0;
 }
 
-uint32_t Vertical_y = 0;
-static uint32_t Vertical_xerr_last = 0; // 上次X轴速度位置误差
-static uint32_t Vertical_yerr_last = 0; // 上次Y轴速度位置误差
-uint32_t Target_Vertical_x = 0;         // X轴目标速度
-uint32_t Target_Vertical_y = 0;         // Y轴目标速度
+/************************ 轨迹与前馈控制参数 ************************/
+// 外部可直接赋值，控制电机运动速度
+uint32_t Target_Vertical_x = 0;     // X轴目标运动速度（像素/帧）
+uint32_t Target_Vertical_y = 0;     // Y轴目标运动速度（像素/帧）
 
-static uint32_t xerr_last = 0; // 上次X轴位置误差
-static uint32_t yerr_last = 0; // 上次Y轴位置误差
+// 轨迹目标坐标：视觉跟踪的目标点
+float_t target_x = 0;              // X轴目标坐标
+float_t target_y = 0;              // Y轴目标坐标
 
-static uint32_t time_count_last = 0; // 上次时间戳
+// 速度前馈系数：开环前馈，提升轨迹跟随平滑度
+const int32_t Kf_x = 10;            // X轴前馈系数
+const int32_t Kf_y = 10;            // Y轴前馈系数
 
-static int32_t Vertical_Xerr_S = 0; // 速度环X轴积分
-static int32_t Vertical_Yerr_S = 0; // 速度环Y轴积分
-static int32_t Position_Xerr_S = 0; // 位置环X轴积分
-static int32_t Position_Yerr_S = 0; // 位置环Y轴积分
+/************************ PID内部静态变量 ************************/
+static int32_t xerr_last = 0;       // X轴上一帧误差，用于微分计算
+static int32_t yerr_last = 0;       // Y轴上一帧误差，用于微分计算
+static uint32_t time_count_last = 0;// 上一帧控制时间戳，计算时间间隔dt
+static int32_t integral_x = 0;      // X轴积分累加值
+static int32_t integral_y = 0;      // Y轴积分累加值
 
-#define Get_square(x) ((x) * (x))
+/************************ 工具宏定义 ************************/
+#define Get_square(x) ((x) * (x))                           // 计算平方
 #define LIMIT_VALUE_SYMMETRIC(value, max_val) \
     do                                        \
     {                                         \
@@ -82,155 +75,156 @@ static int32_t Position_Yerr_S = 0; // 位置环Y轴积分
         {                                     \
             (value) = -(max_val);             \
         }                                     \
-    } while (0)
-#define LIMIT_SYMMETRIC(value) LIMIT_VALUE_SYMMETRIC(value, Integral_MAX)
+    } while (0)                               // 对称限幅宏：限制数值在±max_val之间
+#define LIMIT_SYMMETRIC(value) LIMIT_VALUE_SYMMETRIC(value, Integral_MAX)  // 积分专用限幅
 
 /**
- * @brief 速度环控制计算
- *
- * @param Dimension 控制维度（x 或 y）
- * @param err 当前位置偏差
- * @param interval_time 离上次计算的间隔时间
- * @return int32_t 速度环的输出值
+ * @brief  单轴位置环PID控制计算
+ * @param  Dimension: 控制维度 x/y
+ * @param  err: 当前位置偏差（目标值-实际值）
+ * @param  dt: 控制周期时间间隔（单位：ms）
+ * @retval pid_out: PID计算输出值
  */
-int32_t Speed_Loop_Control(Dimension_t Dimension, int32_t err, uint32_t interval_time)
+int32_t Position_PID_Control(Dimension_t Dimension, float err, uint32_t dt)
 {
-    int32_t Speed_out = 0;
+    float pid_out = 0;
+    if(dt == 0) dt = 1;              // 防止除0错误
 
-    if (Dimension == x)
+    if (Dimension == x)              // X轴PID计算
     {
-        int32_t Vertical_Err = 0;
-        int32_t Vertical_x = 0;
-        Vertical_x = (err - xerr_last) / interval_time;                             // 获取速度
-        Vertical_Err = Target_Vertical_x - Vertical_x;                              // 获取速度误差
-        Vertical_Err = (1 - ratio_x) * Vertical_Err + ratio_x * Vertical_xerr_last; // 低通滤波
-        Vertical_Xerr_S += Vertical_Err;                                            // 速度积分
-        LIMIT_SYMMETRIC(Vertical_Xerr_S);
-        Speed_out = Dimension_x.Speed_Loop.kp * Vertical_Err + Dimension_x.Speed_Loop.ki * (Vertical_Xerr_S) + Dimension_x.Speed_Loop.kd * (Vertical_xerr_last - Vertical_Err); // PID计算
-        Vertical_xerr_last = Vertical_Err;
+        integral_x += err;           // 误差积分累加
+        LIMIT_VALUE_SYMMETRIC(integral_x, Integral_MAX);  // 积分限幅
+
+        // 位置环PID公式：输出 = Kp*误差 + Ki*积分 + Kd*微分
+        pid_out = Position_PID_x.kp * err
+                + Position_PID_x.ki * integral_x
+                + Position_PID_x.kd * (err - xerr_last) / dt;
     }
-    else if (Dimension == y)
+    else                             // Y轴PID计算
     {
-        int32_t Vertical_Err = 0;
-        int32_t Vertical_y = 0;
-        Vertical_y = (err - yerr_last) / interval_time;                             // 获取速度
-        Vertical_Err = Target_Vertical_y - Vertical_y;                              // 获取速度误差
-        Vertical_Err = (1 - ratio_y) * Vertical_Err + ratio_y * Vertical_yerr_last; // 低通滤波
-        Vertical_Yerr_S += Vertical_Err;                                            // 速度积分
-        LIMIT_SYMMETRIC(Vertical_Yerr_S);
-        Speed_out = Dimension_y.Speed_Loop.kp * Vertical_Err + Dimension_y.Speed_Loop.ki * (Vertical_Yerr_S) + Dimension_y.Speed_Loop.kd * (Vertical_yerr_last - Vertical_Err); // PID计算
-        Vertical_yerr_last = Vertical_Err;
+        integral_y += err;           // 误差积分累加
+        LIMIT_VALUE_SYMMETRIC(integral_y, Integral_MAX);  // 积分限幅
+
+        // 位置环PID公式
+        pid_out = Position_PID_y.kp * err
+                + Position_PID_y.ki * integral_y
+                + Position_PID_y.kd * (err - yerr_last) / dt;
     }
 
-    return Speed_out;
+    LIMIT_VALUE_SYMMETRIC(pid_out, MAX_SPEED);  // PID输出限幅
+    return (int32_t)(pid_out + 0.5f);
 }
 
 /**
- * @brief 位置环控制计算
- *
- * @param Dimension 控制维度（x 或 y）
- * @param err 当前位置偏差
- * @param interval_time 离上次计算的间隔时间
- * @return int32_t 位置环的输出值
+ * @brief  轨迹生成模块：更新目标点坐标
+ * @param  dt: 时间间隔
+ * @retval 无
+ * @note   独立模块，修改轨迹仅需改动此函数
  */
-int32_t Position_Loop_Control(Dimension_t Dimension, int32_t err, uint32_t interval_time)
+void Trajectory_Update(uint32_t dt)
 {
-    int32_t Speed_out = 0;
+    // 默认：匀速直线运动轨迹
+    target_x += Target_Vertical_x * dt / 1000;
+    target_y += Target_Vertical_y * dt / 1000;
 
-    if (Dimension == x)
-    {
-        Position_Xerr_S += err;
-        Speed_out = Dimension_x.Position_Loop.kp * err + Dimension_x.Position_Loop.ki * (Vertical_Xerr_S) + Dimension_x.Position_Loop.kd * (err - xerr_last) / interval_time; // PID计算
-    }
-    else if (Dimension == y)
-    {
-        Position_Yerr_S += err;
-        Speed_out = Dimension_y.Position_Loop.kp * err + Dimension_y.Position_Loop.ki * (Vertical_Yerr_S) + Dimension_y.Position_Loop.kd * (err - yerr_last) / interval_time; // PID计算
-    }
-    return Speed_out;
+/*
+    【圆形绕圈轨迹示例】
+    static float angle = 0;
+    float radius = 100;     // 绕圈半径（像素）
+    float speed = 0.05f;    // 绕圈角速度
+    angle += speed;
+    if(angle > 2*PI) angle = 0;
+    target_x = 320 + radius * cos(angle);  // 屏幕中心X
+    target_y = 240 + radius * sin(angle);  // 屏幕中心Y
+*/
 }
 
 /**
- * @brief X轴串级PID控制
- *
- * @param x_err X轴位置偏差
- * @param interval_time 间隔时间
- * @return int32_t X轴最终控制输出
+ * @brief  主控制函数：视觉位置环+速度前馈总控
+ * @param  now_x: 视觉识别的当前激光X坐标
+ * @param  now_y: 视觉识别的当前激光Y坐标
+ * @retval 无
+ * @note   电赛核心控制逻辑：单闭环+前馈，稳定不耦合
  */
-int32_t PID_x_Control(int32_t x_err, uint32_t interval_time)
+void PID_Control(float now_x, float now_y)
 {
-    return Position_Loop_Control(x, x_err+Speed_Loop_Control(x, x_err, interval_time),interval_time );
-}
+    int32_t x_out = 0;               // X轴最终电机输出
+    int32_t y_out = 0;               // Y轴最终电机输出
+    uint32_t time_count = 0;         // 当前时间戳
+    uint32_t interval_time = 0;      // 控制周期间隔时间
 
-/**
- * @brief Y轴串级PID控制
- *
- * @param y_err Y轴位置偏差
- * @param interval_time 间隔时间
- * @return int32_t Y轴最终控制输出
- */
-int32_t PID_y_Control(int32_t y_err, uint32_t interval_time)
-{
-    return Position_Loop_Control(y, y_err+Speed_Loop_Control(y, y_err, interval_time),interval_time );
-}
-
-/**
- * @brief 整体PID控制函数（串级控制），计算各轴控制输出并控制电机运动
- *
- * @param xerr X轴位置偏差
- * @param yerr Y轴位置偏差
- */
-void PID_Control(int32_t xerr, int32_t yerr)
-{
-    int32_t x_out = 0;
-    int32_t y_out = 0;
-    uint32_t time_count = 0;
-    uint32_t interval_time = 0;
+    // 获取定时器计时，计算时间间隔dt
     time_count = g_timer3_count;
-    interval_time = (time_count_last <= Initial_time_threshold ? time_count_last : (time_count - time_count_last)); // 获取间隔时间
+    interval_time = time_count - time_count_last;
+
+    // 时间容错：防止异常大值/0值导致计算错误
+    if(interval_time > 100) interval_time = 100;
+    if(interval_time == 0) interval_time = 1;
     time_count_last = time_count;
-    if (Stop_flag)
+
+    // 停机标志：停机时清零所有状态，防止重启漂移
+    if (!Stop_flag)
     {
-        xerr_last = 0;
-        yerr_last = 0;
-        Vertical_Xerr_S = 0;
-        Vertical_Yerr_S = 0;
+        xerr_last = 0; yerr_last = 0;
+        integral_x = 0; integral_y = 0;
+        target_x = 0; target_y = 0;
         return;
     }
 
-    x_out = PID_x_Control(xerr, interval_time);
-    y_out = PID_y_Control(yerr, interval_time);
+    // ===================== 核心控制流程 =====================
+    // 步骤1：更新轨迹目标点
+    Trajectory_Update(interval_time);
 
-    if (x_out >= 0)
-    {
+    // 步骤2：计算视觉位置误差 = 目标坐标 - 当前视觉坐标
+    float err_x = target_x - now_x;
+    float err_y = target_y - now_y;
+
+    // 步骤3：位置环PID计算误差修正量
+    int32_t pid_x = Position_PID_Control(x, err_x, interval_time);
+    int32_t pid_y = Position_PID_Control(y, err_y, interval_time);
+
+    // 步骤4：速度前馈计算：开环基础速度，提升跟随性
+    int32_t feed_x = Target_Vertical_x * Kf_x;
+    int32_t feed_y = Target_Vertical_y * Kf_y;
+
+    // 步骤5：最终输出 = PID修正 + 速度前馈
+    x_out = pid_x + feed_x;
+    y_out = pid_y + feed_y;
+
+    // 输出限幅，保护电机
+    LIMIT_VALUE_SYMMETRIC(x_out, MAX_SPEED);
+    LIMIT_VALUE_SYMMETRIC(y_out, MAX_SPEED);
+
+    // ===================== 电机驱动控制 =====================
+    // X轴电机：根据输出正负判断方向
+    if(x_out >= 0)
         Emm_V5_Pos_Control(1, 0, (uint16_t)x_out, 0, 16000, 0, 1);
-    }
-    else if (x_out < 0)
-    {
-        Emm_V5_Pos_Control(1, 1, (uint16_t)(-x_out), 0, 16000, 0, 1);
-    }
-    if (y_out >= 0)
-    {
+    else
+        Emm_V5_Pos_Control(1, 1, (uint16_t)-x_out, 0, 16000, 0, 1);
+
+    // Y轴电机：根据输出正负判断方向
+    if(y_out >= 0)
         Emm_V5_Pos_Control(2, 0, (uint16_t)y_out, 0, 14000, 0, 1);
-    }
-    else if (y_out < 0)
-    {
-        Emm_V5_Pos_Control(2, 1, (uint16_t)(-y_out), 0, 14000, 0, 1);
-    }
-    Emm_V5_Synchronous_motion(0);
-    xerr_last = xerr;
-    yerr_last = yerr;
+    else
+        Emm_V5_Pos_Control(2, 1, (uint16_t)-y_out, 0, 14000, 0, 1);
+
+    Emm_V5_Synchronous_motion(0);  // 电机同步运动执行
+
+    // 保存当前误差，用于下一帧微分计算
+    xerr_last = err_x;
+    yerr_last = err_y;
 }
 
-// ====================== 核心函数1：计算透视变换矩阵H ======================
+// ====================== 透视变换（视觉标定）核心函数 ======================
 /**
- * @brief 计算透视变换矩阵（单应性矩阵H） - 针对 STM32F103 的 Hartley 归一化优化版
- * @param src 输入：照片中屏幕四个角的光电坐标（必须是顺时针闭环）
- * @param dst 输入：屏幕实际四个角的相对坐标（必须和src的顺序完全一致）
- * @param H   输出：3x3的透视变换矩阵（H[2][2]=1.0f，尺度归一化）
- * @return 0:计算成功, -1:计算失败（四点共线/坐标错误/奇异矩阵）
+ * @brief  计算透视变换单应性矩阵H（Hartley归一化优化，适配F103）
+ * @param  src[4]: 视觉采集的4个角点像素坐标
+ * @param  dst[4]: 实际物理4个角点坐标
+ * @param  H[3][3]: 输出3x3透视变换矩阵
+ * @retval 0=成功, -1=失败
+ * @note   上电仅标定一次，不占用实时算力
  */
-int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
+int calcHomography(Point2D src[4], Point2D dst[4],float H[3][3])
 {
     static float A[8][9];
     int i, j;
@@ -239,14 +233,14 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
     float s_src, s_dst;
     const float SQRT2 = 1.41421356f;
 
-    // 1. 静态数组清零 (使用循环以策安全，也可用 memset(A, 0, sizeof(A)))
+    // 1. 矩阵A清零初始化
     for (i = 0; i < 8; i++) {
         for (j = 0; j < 9; j++) {
             A[i][j] = 0.0f;
         }
     }
 
-    // 2. Hartley 归一化：求质心
+    // 2. Hartley归一化：计算坐标点质心，提升计算精度
     for (i = 0; i < 4; i++) {
         cx_src += src[i].x; cy_src += src[i].y;
         cx_dst += dst[i].x; cy_dst += dst[i].y;
@@ -254,7 +248,7 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
     cx_src *= 0.25f; cy_src *= 0.25f;
     cx_dst *= 0.25f; cy_dst *= 0.25f;
 
-    // 3. Hartley 归一化：求平均绝对距离并计算缩放因子
+    // 3. 计算归一化缩放因子
     for (i = 0; i < 4; i++) {
         float dx_s = src[i].x - cx_src; float dy_s = src[i].y - cy_src;
         float dx_d = dst[i].x - cx_dst; float dy_d = dst[i].y - cy_dst;
@@ -264,13 +258,13 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
     avg_dist_src *= 0.25f;
     avg_dist_dst *= 0.25f;
 
-    // 放宽阈值匹配单精度浮点特征
+    // 非法坐标判断
     if (avg_dist_src < 1e-6f || avg_dist_dst < 1e-6f) return -1;
 
     s_src = SQRT2 / avg_dist_src;
     s_dst = SQRT2 / avg_dist_dst;
 
-    // 4. 用归一化后的点构建 8x9 矩阵 A
+    // 4. 构建8×9线性方程组矩阵A
     for (i = 0; i < 4; i++) {
         float x = (src[i].x - cx_src) * s_src;
         float y = (src[i].y - cy_src) * s_src;
@@ -284,7 +278,7 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
         A[2 * i + 1][6] = -v * x;A[2 * i + 1][7] = -v * y;A[2 * i + 1][8] = -v;
     }
 
-    // 5. 高斯-约当消元提取 H_norm
+    // 5. 高斯-约当消元求解矩阵
     for (int col = 0; col < 8; col++) {
         float maxVal = fabs(A[col][col]);
         int maxRow = col;
@@ -295,6 +289,7 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
             }
         }
 
+        // 行交换，避免除0
         if (maxRow != col) {
             float temp;
             for (j = col; j < 9; j++) {
@@ -316,12 +311,12 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
         }
     }
 
-    // 6. 稀疏矩阵连乘展开反归一化: H = T_dst^{-1} * H_norm * T_src
+    // 6. 反归一化，计算最终H矩阵
     float h00 = -A[0][8], h01 = -A[1][8], h02 = -A[2][8];
     float h10 = -A[3][8], h11 = -A[4][8], h12 = -A[5][8];
-    float h20 = -A[6][8], h21 = -A[7][8]; // h22 隐含等于 1.0f
+    float h20 = -A[6][8], h21 = -A[7][8];
 
-    // M = H_norm * T_src
+    // 矩阵运算：归一化逆变换
     float M00 = h00 * s_src;
     float M01 = h01 * s_src;
     float M02 = h02 - M00 * cx_src - M01 * cy_src;
@@ -334,12 +329,11 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
     float M21 = h21 * s_src;
     float M22 = 1.0f - M20 * cx_src - M21 * cy_src;
 
-    // H = T_dst^{-1} * M
     if (fabs(M22) < 1e-6f) return -1;
-    // 提前计算总归一化综合因子：(1/s_dst) 与 M22 的倒数
     float inv_s_dst = 1.0f / s_dst;
     float inv_H22 = 1.0f / M22;
 
+    // 最终赋值3x3单应性矩阵H
     H[0][0] = (inv_s_dst * M00 + cx_dst * M20) * inv_H22;
     H[0][1] = (inv_s_dst * M01 + cx_dst * M21) * inv_H22;
     H[0][2] = (inv_s_dst * M02 + cx_dst * M22) * inv_H22;
@@ -350,26 +344,28 @@ int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3])
 
     H[2][0] = M20 * inv_H22;
     H[2][1] = M21 * inv_H22;
-    H[2][2] = 1.0f; // 已强制尺度归一
+    H[2][2] = 1.0f;
 
     return 0;
 }
 
-// ====================== 核心函数2：视觉坐标转屏幕坐标 ======================
 /**
- * @brief 视觉坐标转屏幕相对坐标（严格左乘H矩阵）
- * @param H       输入：calcHomography算出的3x3变换矩阵
- * @param pixelPt 输入：照片中的光电坐标
- * @param screenPt 输出：转换后的屏幕相对坐标
+ * @brief  视觉像素坐标 → 实际物理坐标转换
+ * @param  H[3][3]: 已标定好的透视矩阵
+ * @param  pixelPt: 视觉识别的激光像素点
+ * @param  screenPt: 输出转换后的实际坐标
+ * @retval 无
  */
 void visualToReal(float H[3][3], Point2D pixelPt, Point2D *screenPt)
 {
     float x = pixelPt.x, y = pixelPt.y;
 
+    // 矩阵左乘运算
     float u_prime = H[0][0] * x + H[0][1] * y + H[0][2];
     float v_prime = H[1][0] * x + H[1][1] * y + H[1][2];
     float w       = H[2][0] * x + H[2][1] * y + H[2][2];
 
+    // 除0保护
     if (fabs(w) < 1e-5f)
     {
         screenPt->x = 0.0f;
@@ -377,7 +373,7 @@ void visualToReal(float H[3][3], Point2D pixelPt, Point2D *screenPt)
         return;
     }
 
-    // 变除法为乘法提速
+    // 齐次坐标归一化（乘法提速，替代除法）
     float inv_w = 1.0f / w;
     screenPt->x = u_prime * inv_w;
     screenPt->y = v_prime * inv_w;

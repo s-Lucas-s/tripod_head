@@ -1,6 +1,6 @@
 #include "Timer.h"
 
-uint32_t g_timer3_count = 0;													//全局变量：累计即使次数（中断100ms，计数+1）
+uint32_t g_timer3_count = 0; // 全局变量：累计即使次数（中断100ms，计数+1）
 
 void Timer_Init(void) // TIM3用以定时中断
 {
@@ -15,7 +15,7 @@ void Timer_Init(void) // TIM3用以定时中断
     TIM_TimerBaseInitStructure.TIM_Period = 1000 - 1;                // ARR（自动重装载器值）1ms
     TIM_TimerBaseInitStructure.TIM_Prescaler = 72 - 1;               // PSC（预分频器）
     TIM_TimerBaseInitStructure.TIM_RepetitionCounter = 0;            // 重复计数器（高级定时器使用）
-    TIM_TimerBaseInit(TIM3, &TIM_TimerBaseInitStructure);
+    TIM_TimeBaseInit(TIM3, &TIM_TimerBaseInitStructure);
 
     TIM_ClearFlag(TIM3, TIM_FLAG_Update); // 清除中断标志位
 
@@ -33,7 +33,7 @@ void Timer_Init(void) // TIM3用以定时中断
     TIM_TimerBaseInitStructure.TIM_Period = 1000 - 1;                // ARR（自动重装载器值）1ms
     TIM_TimerBaseInitStructure.TIM_Prescaler = 72 - 1;               // PSC（预分频器）
     TIM_TimerBaseInitStructure.TIM_RepetitionCounter = 0;            // 重复计数器（高级定时器使用）
-    TIM_TimerBaseInit(TIM2, &TIM_TimerBaseInitStructure);
+    TIM_TimeBaseInit(TIM2, &TIM_TimerBaseInitStructure);
 
     TIM_ClearFlag(TIM2, TIM_FLAG_Update); // 清除中断标志位
 
@@ -51,4 +51,3 @@ void TIM3_IRQHandler(void)
         TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
     }
 }
-

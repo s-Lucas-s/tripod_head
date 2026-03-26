@@ -12,10 +12,14 @@ typedef struct
 
 extern uint32_t Target_Vertical_x; // X轴目标速度
 extern uint32_t Target_Vertical_y; // Y轴目标速度
+extern float target_x;              // X轴目标坐标
+extern float target_y;              // Y轴目标坐标
+
+extern float H[3][3];
 
 void PID_Init(void);
-void PID_Control(int32_t xerr, int32_t yerr);
-int calcHomography(Point2D src[4], Point2D dst[4], float H[3][3]);
+void PID_Control(float now_x, float now_y);
+int calcHomography(Point2D src[4], Point2D dst[4],float H[3][3]);
 void visualToReal(float H[3][3], Point2D pixelPt, Point2D *screenPt);
 
 #endif

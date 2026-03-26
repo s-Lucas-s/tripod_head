@@ -27,6 +27,8 @@ void handle_USART_BasicQuestion1(void)
     if (RxState == 0 && ((com_data == 0xA5 && data_packet_count == 0) || (com_data == 0xB6 && data_packet_count == 1))) // 0xA5帧头
     {
         RxState = 1;
+        RxCounter = 0;
+        RxArrayCounter = 0;
     }
     else if (RxState == 1)
     {
@@ -35,26 +37,12 @@ void handle_USART_BasicQuestion1(void)
         if (RxArrayCounter == 4) // 收满第1个float（4字节）
         {
             RxCounter = 0;
-            if (data_packet_count) // B6包：做差计算
-            {
-                center_x = -(center_x - RxBuffer.FloatNum);
-            }
-            else // A5包：直接保存
-            {
-                center_x = RxBuffer.FloatNum;
-            }
+            center_x = RxBuffer.FloatNum;
         }
         else if (RxArrayCounter == 8) // 收满第2个float（4字节）
         {
             RxCounter = 0;
-            if (data_packet_count) // B6包：做差计算
-            {
-                center_y = -(center_y - RxBuffer.FloatNum);
-            }
-            else // A5包：直接保存
-            {
-                center_y = RxBuffer.FloatNum;
-            }
+            center_y = RxBuffer.FloatNum;
         }
         else if (RxArrayCounter == 9) // 收满帧尾（第10个字节）
         {
@@ -65,9 +53,17 @@ void handle_USART_BasicQuestion1(void)
                 RxState = 0;
                 if (data_packet_count == 1) // B6包收完：执行PID控制
                 {
+
                     PID_Control((int32_t)(center_x), (int32_t)(center_y));
                     data_packet_count = 0;
                     return;
+                }
+                else
+                {
+                    Target_Vertical_x = 0;
+                    Target_Vertical_y = 0;
+                    target_x = center_x;
+                    target_y = center_y;
                 }
                 data_packet_count = 1; // A5包收完：准备收B6包
                 Serial_SendByte(0x01); // 接收到A5并发1（应答视觉端）
@@ -98,6 +94,101 @@ void handle_USART_BasicQuestion1(void)
 // 处理函数2：第二题（预留）
 void handle_USART_BasicQuestion2(void)
 {
+
+    u8 com_data;                        // 用于读取STM32串口收到的数据，这个数据会被下一个数据掩盖，所以要将它用一个数组储存起来。
+    static bool data_packet_count = 0;  // 数据包计数：0=A5包，1=B6包
+    static u8 RxCounter = 0;            // 共用体数组索引计数器（0-3循环）
+    static u8 RxArrayCounter = 0;       // 全局字节计数器（0-9）
+    static UnionFloat_t RxBuffer = {0}; // 定义一个6个成员的数组，可以存放6个数据，刚好放下一个数据包。
+    static u8 RxState = 0;              // 接收状态，判断程序应该接收第一个帧头、第二个帧头、数据或帧尾。
+    static Point2D src[4];
+    static Point2D dst[4] = {
+        {0.0f, 0.0f},     // 屏幕左上
+        {100.0f, 0.0f},   // 屏幕右上
+        {100.0f, 100.0f}, // 屏幕右下
+        {0.0f, 100.0f}    // 屏幕左下
+    };
+    com_data = USART_ReceiveData(USART3);
+    // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xA5），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
+    if (RxState == 0 && ((com_data == 0xA5 && data_packet_count == 0) || (com_data == 0xB6 && data_packet_count == 1))) // 0xA5帧头
+    {
+        RxState = 1;
+    }
+    else if (RxState == 1)
+    {
+        RxBuffer.Array[RxCounter++] = com_data; // 数据填入共用体数组
+        RxArrayCounter++;
+        if (RxArrayCounter < 9)
+        {
+            switch (RxArrayCounter)
+            {
+            case 4:
+                RxCounter = 0;
+                src[0].x = RxBuffer.FloatNum;
+                break;
+            case 8:
+                RxCounter = 0;
+                src[0].y = RxBuffer.FloatNum;
+                break;
+            case 12:
+                RxCounter = 0;
+                src[1].x = RxBuffer.FloatNum;
+                break;
+            case 16:
+                RxCounter = 0;
+                src[1].y = RxBuffer.FloatNum;
+                break;
+            case 20:
+                RxCounter = 0;
+                src[2].x = RxBuffer.FloatNum;
+                break;
+            case 24:
+                RxCounter = 0;
+                src[2].y = RxBuffer.FloatNum;
+                break;
+            case 28:
+                RxCounter = 0;
+                src[3].x = RxBuffer.FloatNum;
+                break;
+            case 32:
+                RxCounter = 0;
+                src[3].y = RxBuffer.FloatNum;
+                break;
+            }
+        }
+        else if (RxArrayCounter == 33) // 收满帧尾（第10个字节）
+        {
+            if (com_data == 0x5A)
+            {
+                RxCounter = 0;
+                RxArrayCounter = 0;
+                RxState = 0;
+                if (!(calcHomography(src, dst, H)))
+                {
+                    Serial_SendByte(0x01); // 接收到A5并发1（应答视觉端）
+                }
+            }
+            else
+            {
+                // 帧尾不对，立即重置，不用等 RxCounter > 10
+                RxState = 0;
+                RxCounter = 0;
+                RxArrayCounter = 0;
+                data_packet_count = 0;
+                center_x = 0;
+                center_y = 0;
+            }
+        }
+    }
+    else // 接收异常
+    {
+        RxState = 0;
+        RxCounter = 0;
+        center_x = 0;
+        center_y = 0;
+        RxArrayCounter = 0;
+        RxBuffer.FloatNum = 0;
+    }
 }
 // 处理函数3：第三题（预留）
 void handle_USART_BasicQuestion3(void)
