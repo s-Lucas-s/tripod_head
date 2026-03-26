@@ -396,7 +396,6 @@ void Serial_SendPacket(uint8_t packet_header, uint8_t packet_tail, uint8_t *Arra
     Serial_SendByte(packet_tail);    // 发送包尾
 }
 
-static bool Power_on_flag = 0; // 开机标志位：0=未开机，1=已开机
 // USART3中断服务函数：处理串口接收
 void USART3_IRQHandler(void)
 {
