@@ -25,7 +25,7 @@ void handle_USART_BasicQuestion1(void)
     static u8 RxState = 0;              // 接收状态，判断程序应该接收第一个帧头、第二个帧头、数据或帧尾。
     com_data = USART_ReceiveData(USART3);
     // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xA5），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
-    if (RxState == 0 && ((com_data == 0xA5 && data_packet_count == 0) || (com_data == 0xB6 && data_packet_count == 1))) // 0xA5帧头
+    if (RxState == 0 && com_data == 0xB6) // 0xA5帧头
     {
         RxState = 1;
         RxCounter = 0;
@@ -47,7 +47,7 @@ void handle_USART_BasicQuestion1(void)
         }
         else if (RxArrayCounter == 9) // 收满帧尾（第10个字节）
         {
-            if ((com_data == 0x5A && data_packet_count == 0) || (com_data == 0x6B && data_packet_count == 1))
+            if (com_data == 0x6B && data_packet_count == 1)
             {
                 RxCounter = 0;
                 RxArrayCounter = 0;
@@ -67,8 +67,11 @@ void handle_USART_BasicQuestion1(void)
                     target_y = center_y;
                 }
                 data_packet_count = 1; // A5包收完：准备收B6包
-                Serial_SendByte(0x01); // 接收到A5并发1（应答视觉端）
-            }
+
+                uint8_t ack_data = 1; // 单个字节数据
+                Serial_SendPacket(0xA5, 0x5A, &ack_data, 1);
+                RxState = 0;            
+                }
             else
             {
                 // 帧尾不对，立即重置，不用等 RxCounter > 10
@@ -119,7 +122,7 @@ void handle_USART_BasicQuestion2(void)
         {0.0f, 100.0f}};
     com_data = USART_ReceiveData(USART3);
     // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xA5），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
-    if (RxState == 0 && ((com_data == 0xA5 && data_packet_count == 0) || (com_data == 0xB6 && data_packet_count == 1))) // 0xA5帧头
+    if (RxState == 0 &&  (com_data == 0xB6 && data_packet_count == 1)) // 0xA5帧头
     {
         RxState = 1;
         RxCounter = 0;
