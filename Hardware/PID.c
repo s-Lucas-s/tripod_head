@@ -175,7 +175,7 @@ void PID_Control(float now_x, float now_y)
 
     // ===================== 核心控制流程 =====================
     // 步骤1：更新轨迹目标点
-    Trajectory_Update(interval_time);
+    // Trajectory_Update(interval_time);
 
     // 步骤2：计算视觉位置误差 = 目标坐标 - 当前视觉坐标
     float err_x = target_x - now_x;
