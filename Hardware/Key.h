@@ -4,6 +4,7 @@
 
 void Key_Init(void);
 unsigned char Key_GetCode(void);
+unsigned char Key_Get(void);
 void Key_LoopDetect(void);
 
 #endif

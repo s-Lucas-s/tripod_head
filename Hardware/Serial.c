@@ -296,7 +296,7 @@ void Serial_Init(void)
     USART_InitTypeDef USART_InitStructure;
     USART_InitStructure.USART_BaudRate = 115200;                                    // 波特率115200
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // 无硬件流控
-    USART_InitStructure.USART_Mode = USART_Mode_Rx;                                 // 仅接收模式（如需发送可改为USART_Mode_Rx | USART_Mode_Tx）
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;                                 // 仅接收模式（如需发送可改为USART_Mode_Rx | USART_Mode_Tx）
     USART_InitStructure.USART_Parity = USART_Parity_No;                             // 无校验
     USART_InitStructure.USART_StopBits = USART_StopBits_1;                          // 1位停止位
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;                     // 8位数据位
@@ -406,7 +406,7 @@ void USART3_IRQHandler(void)
         // 开机握手：利用&&短路特性，只有Power_on_flag==0时才会读数据
         if (Power_on_flag == 0 && USART_ReceiveData(USART3) == 1)
         {
-            {
+            if(Stop_flag == 1){
                 Power_on_flag = 1;                                       // 置位开机标志
                 Serial_SendPacket(0xA5, 0x5A, (uint8_t *)&Questionx, 1); // 发送题目指令包（A5+题号+5A）
             }
