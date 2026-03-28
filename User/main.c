@@ -21,6 +21,7 @@ int main(void)
     OLED_Init();
     Serial_Init();
     Timer_Init();
+    Serial_SendPacket(0xB6,0x6B,(uint8_t*)&RESET_KEY,1); // 串口发送数据包
     //OLED_ShowString(0, 0, "Holle!", OLED_8X16);
     // OLED_Update();
     

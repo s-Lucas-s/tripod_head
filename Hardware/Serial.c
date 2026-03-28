@@ -2,6 +2,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+const uint8_t RESET_KEY = 0xFF; // 定义一个全局变量，用于接收串口命令，控制系统重置
+
 // 共用体：用于float和4字节数组的互转，方便解析串口收到的浮点数据
 typedef union UnionFloat {
     uint8_t Array[4]; // 字节数组形式，用于逐字节接收
@@ -53,6 +55,9 @@ void handle_USART_BasicQuestion1(void)
                 RxState = 0;
                 if (data_packet_count == 1) // B6包收完：执行PID控制
                 {
+                    OLED_ShowFloatNum(0, 32, center_x, 3, 3, OLED_8X16);
+                    OLED_ShowFloatNum(0, 48, center_y, 3, 3, OLED_8X16);
+                    OLED_Update();
                     PID_Control((int32_t)(center_x), (int32_t)(center_y));
                     data_packet_count = 0;
                     return;
@@ -62,7 +67,7 @@ void handle_USART_BasicQuestion1(void)
                     Target_Vertical_x = 0;
                     Target_Vertical_y = 0;
                     target_x = center_x;
-                    target_y = center_y;
+                    target_y = center_y; 
                 }
                 data_packet_count = 1; // 切换为等待B6目标激光包
                 uint8_t ack_data = 1; // 单个字节数据
