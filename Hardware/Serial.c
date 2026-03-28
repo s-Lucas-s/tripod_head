@@ -16,7 +16,6 @@ typedef void (*cmd_handler_USART_t)(void);
 // 处理函数1：第一题的串口数据包解析与处理
 void handle_USART_BasicQuestion1(void)
 {
-
     u8 com_data;                        // 用于读取STM32串口收到的数据，这个数据会被下一个数据掩盖，所以要将它用一个数组储存起来。
     static bool data_packet_count = 0;  // 数据包计数：0=A5包，1=B6包
     static u8 RxCounter = 0;            // 共用体数组索引计数器（0-3循环）
@@ -24,8 +23,8 @@ void handle_USART_BasicQuestion1(void)
     static UnionFloat_t RxBuffer = {0}; // 定义一个6个成员的数组，可以存放6个数据，刚好放下一个数据包。
     static u8 RxState = 0;              // 接收状态，判断程序应该接收第一个帧头、第二个帧头、数据或帧尾。
     com_data = USART_ReceiveData(USART3);
-    // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xA5），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
-    if (RxState == 0 && com_data == 0xB6) // 0xA5帧头
+    // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xB6），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
+    if (RxState == 0 && com_data == 0xB6) // 0xB6帧头
     {
         RxState = 1;
         RxCounter = 0;
@@ -47,14 +46,13 @@ void handle_USART_BasicQuestion1(void)
         }
         else if (RxArrayCounter == 9) // 收满帧尾（第10个字节）
         {
-            if (com_data == 0x6B && data_packet_count == 1)
+            if (com_data == 0x6B) // 校验帧尾0x6B
             {
                 RxCounter = 0;
                 RxArrayCounter = 0;
                 RxState = 0;
                 if (data_packet_count == 1) // B6包收完：执行PID控制
                 {
-
                     PID_Control((int32_t)(center_x), (int32_t)(center_y));
                     data_packet_count = 0;
                     return;
@@ -66,11 +64,9 @@ void handle_USART_BasicQuestion1(void)
                     target_x = center_x;
                     target_y = center_y;
                 }
-                data_packet_count = 1; // A5包收完：准备收B6包
-
+                data_packet_count = 1; // 切换为等待B6目标激光包
                 uint8_t ack_data = 1; // 单个字节数据
-                Serial_SendPacket(0xA5, 0x5A, &ack_data, 1);
-                RxState = 0;            
+                Serial_SendPacket(0xA5, 0x5A, &ack_data, 1);            
                 }
             else
             {
@@ -475,7 +471,7 @@ void USART3_IRQHandler(void)
 
         USART_ClearITPendingBit(USART3, USART_IT_RXNE); // 清除中断标志
         // 开机握手：利用&&短路特性，只有Power_on_flag==0时才会读数据
-        if (Power_on_flag == 0 && USART_ReceiveData(USART3) == 1)
+        if (Power_on_flag == 0 && USART_ReceiveData(USART3) == 0x6B)
         {
             if (Stop_flag == 1)
             {
