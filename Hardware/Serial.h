@@ -3,6 +3,7 @@
 
 #include "sys.h"
 
+extern const uint8_t RESET_KEY; // 定义一个全局变量，用于接收串口命令，控制系统重置
 extern float center_x, center_y; // 外部声明视觉解析的中心坐标
 
 void Serial_Init(void);                                                                              // 串口3初始化函数

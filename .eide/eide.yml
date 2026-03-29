@@ -123,7 +123,7 @@ targets:
         - RTE/_Target 1
       libList: []
     excludeList: []
-    toolchain: AC5
+    toolchain: AC6
     toolchainConfigMap:
       AC5:
         archExtensions: ""
@@ -222,6 +222,50 @@ targets:
               mem:
                 size: "0x0"
                 startAddr: "0x0"
+              tag: IROM
+        useCustomScatterFile: false
+      AC6:
+        archExtensions: ""
+        cpuType: Cortex-M3
+        floatingPointHardware: none
+        options:
+          version: 3
+          afterBuildTasks: []
+          asm-compiler:
+            $use: asm-auto
+          beforeBuildTasks: []
+          c/cpp-compiler:
+            language-c: c99
+            language-cpp: c++11
+            one-elf-section-per-function: true
+            optimization: level-0
+            warnings: ac5-like-warnings
+          global:
+            output-debug-info: enable
+          linker:
+            $outputTaskExcludes:
+              - .bin
+            misc-controls: --diag_suppress=L6329
+            output-format: elf
+            ro-base: "0x08000000"
+            rw-base: "0x20000000"
+        scatterFilePath: <YOUR_SCATTER_FILE>.sct
+        storageLayout:
+          RAM:
+            - id: 1
+              isChecked: true
+              mem:
+                size: "0x5000"
+                startAddr: "0x20000000"
+              noInit: false
+              tag: IRAM
+          ROM:
+            - id: 1
+              isChecked: true
+              isStartup: true
+              mem:
+                size: "0x10000"
+                startAddr: "0x08000000"
               tag: IROM
         useCustomScatterFile: false
     uploadConfigMap:

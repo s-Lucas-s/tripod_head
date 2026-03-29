@@ -2,6 +2,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+const uint8_t RESET_KEY = 0xFF; // 定义一个全局变量，用于接收串口命令，控制系统重置
+
 // 共用体：用于float和4字节数组的互转，方便解析串口收到的浮点数据
 typedef union UnionFloat {
     uint8_t Array[4]; // 字节数组形式，用于逐字节接收
@@ -16,7 +18,6 @@ typedef void (*cmd_handler_USART_t)(void);
 // 处理函数1：第一题的串口数据包解析与处理
 void handle_USART_BasicQuestion1(void)
 {
-
     u8 com_data;                        // 用于读取STM32串口收到的数据，这个数据会被下一个数据掩盖，所以要将它用一个数组储存起来。
     static bool data_packet_count = 0;  // 数据包计数：0=A5包，1=B6包
     static u8 RxCounter = 0;            // 共用体数组索引计数器（0-3循环）
@@ -24,8 +25,8 @@ void handle_USART_BasicQuestion1(void)
     static UnionFloat_t RxBuffer = {0}; // 定义一个6个成员的数组，可以存放6个数据，刚好放下一个数据包。
     static u8 RxState = 0;              // 接收状态，判断程序应该接收第一个帧头、第二个帧头、数据或帧尾。
     com_data = USART_ReceiveData(USART3);
-    // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xA5），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
-    if (RxState == 0 && ((com_data == 0xA5 && data_packet_count == 0) || (com_data == 0xB6 && data_packet_count == 1))) // 0xA5帧头
+    // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xB6），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
+    if (RxState == 0 && com_data == 0xB6) // 0xB6帧头
     {
         RxState = 1;
         RxCounter = 0;
@@ -47,14 +48,16 @@ void handle_USART_BasicQuestion1(void)
         }
         else if (RxArrayCounter == 9) // 收满帧尾（第10个字节）
         {
-            if ((com_data == 0x5A && data_packet_count == 0) || (com_data == 0x6B && data_packet_count == 1))
+            if (com_data == 0x6B) // 校验帧尾0x6B
             {
                 RxCounter = 0;
                 RxArrayCounter = 0;
                 RxState = 0;
                 if (data_packet_count == 1) // B6包收完：执行PID控制
                 {
-
+                    OLED_ShowFloatNum(0, 32, center_x, 3, 3, OLED_8X16);
+                    OLED_ShowFloatNum(0, 48, center_y, 3, 3, OLED_8X16);
+                    OLED_Update();
                     PID_Control((int32_t)(center_x), (int32_t)(center_y));
                     data_packet_count = 0;
                     return;
@@ -64,11 +67,12 @@ void handle_USART_BasicQuestion1(void)
                     Target_Vertical_x = 0;
                     Target_Vertical_y = 0;
                     target_x = center_x;
-                    target_y = center_y;
+                    target_y = center_y; 
                 }
-                data_packet_count = 1; // A5包收完：准备收B6包
-                Serial_SendByte(0x01); // 接收到A5并发1（应答视觉端）
-            }
+                data_packet_count = 1; // 切换为等待B6目标激光包
+                uint8_t ack_data = 1; // 单个字节数据
+                Serial_SendPacket(0xA5, 0x5A, &ack_data, 1);            
+                }
             else
             {
                 // 帧尾不对，立即重置，不用等 RxCounter > 10
@@ -119,7 +123,7 @@ void handle_USART_BasicQuestion2(void)
         {0.0f, 100.0f}};
     com_data = USART_ReceiveData(USART3);
     // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xA5），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
-    if (RxState == 0 && ((com_data == 0xA5 && data_packet_count == 0) || (com_data == 0xB6 && data_packet_count == 1))) // 0xA5帧头
+    if (RxState == 0 &&  (com_data == 0xB6 && data_packet_count == 1)) // 0xA5帧头
     {
         RxState = 1;
         RxCounter = 0;
@@ -364,7 +368,7 @@ void Serial_Init(void)
     USART_InitTypeDef USART_InitStructure;
     USART_InitStructure.USART_BaudRate = 115200;                                    // 波特率115200
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // 无硬件流控
-    USART_InitStructure.USART_Mode = USART_Mode_Rx;                                 // 仅接收模式（如需发送可改为USART_Mode_Rx | USART_Mode_Tx）
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;                                 // 仅接收模式（如需发送可改为USART_Mode_Rx | USART_Mode_Tx）
     USART_InitStructure.USART_Parity = USART_Parity_No;                             // 无校验
     USART_InitStructure.USART_StopBits = USART_StopBits_1;                          // 1位停止位
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;                     // 8位数据位
@@ -464,7 +468,6 @@ void Serial_SendPacket(uint8_t packet_header, uint8_t packet_tail, uint8_t *Arra
     Serial_SendByte(packet_tail);    // 发送包尾
 }
 
-static bool Power_on_flag = 0; // 开机标志位：0=未开机，1=已开机
 // USART3中断服务函数：处理串口接收
 void USART3_IRQHandler(void)
 {
@@ -473,7 +476,7 @@ void USART3_IRQHandler(void)
 
         USART_ClearITPendingBit(USART3, USART_IT_RXNE); // 清除中断标志
         // 开机握手：利用&&短路特性，只有Power_on_flag==0时才会读数据
-        if (Power_on_flag == 0 && USART_ReceiveData(USART3) == 1)
+        if (Power_on_flag == 0 && USART_ReceiveData(USART3) == 0x6B)
         {
             if (Stop_flag == 1)
             {
