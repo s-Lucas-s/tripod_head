@@ -12,8 +12,9 @@ int8_t Questionx = 0;
 
 int main(void)
 {
-    // float x_angle = 0;
-    // float y_angle = 0;
+    SCB->VTOR = FLASH_BASE | 0x2000;
+    NVIC_SetVectorTable(NVIC_VectTab_FLASH, NVIC_VectTab_FLASH_OFFSET);
+    __enable_irq();
     nvic_init();
     PID_Init();
     board_init();
@@ -21,32 +22,30 @@ int main(void)
     OLED_Init();
     Serial_Init();
     Timer_Init();
-    Serial_SendPacket(0xB6,0x6B,(uint8_t*)&RESET_KEY,1); // 串口发送数据包
-    //OLED_ShowString(0, 0, "Holle!", OLED_8X16);
-    // OLED_Update();
-    
+    Serial_SendPacket(0xA5, 0x5A, (uint8_t *)&RESET_KEY, 1); // 串口发送数据包
+    // OLED_ShowString(0, 0, "Holle!", OLED_8X16);
+    //  OLED_Update();
 
     while (1)
     {
         uint8_t keyValue = 0;
         Key_LoopDetect();
-        keyValue = Key_GetCode();// 获取单击按键值
+        keyValue = Key_GetCode(); // 获取单击按键值
 
-          // KEY1按下：mode递增，1-4循环
-            if(keyValue == 1)
+        // KEY1按下：mode递增，1-4循环
+        if (keyValue == 1)
+        {
+            Questionx++;
+            if (Questionx > 4) // 超过4则重置为1
             {
-                Questionx++;
-                if(Questionx > 4)  // 超过4则重置为1
-                {
-                    Questionx = 1;
-                }
+                Questionx = 1;
             }
-            // KEY2按下：Stop_Flag翻转(0变1，1变0)
-            else if(keyValue == 2)
-            {
-                Stop_flag = !Stop_flag;
-            }
-            
+        }
+        // KEY2按下：Stop_Flag翻转(0变1，1变0)
+        else if (keyValue == 2)
+        {
+            Stop_flag = !Stop_flag;
+        }
 
         /*  x_angle = Check_angle(1);
          y_angle = Check_angle(2);
@@ -58,8 +57,8 @@ int main(void)
          } */
         /* OLED_ShowFloatNum(0, 0, x_angle, 3, 3, OLED_8X16);
         OLED_ShowFloatNum(0, 16, y_angle, 3, 3, OLED_8X16); */
-        //OLED_ShowFloatNum(0,16, center_x, 3, 3, OLED_8X16);
-        //OLED_ShowFloatNum(0, 32, center_y, 3, 3, OLED_8X16);
+        // OLED_ShowFloatNum(0,16, center_x, 3, 3, OLED_8X16);
+        // OLED_ShowFloatNum(0, 32, center_y, 3, 3, OLED_8X16);
         OLED_ShowString(0, 0, "Mode:", OLED_8X16);
         OLED_ShowNum(48, 0, Questionx, 1, OLED_8X16);
         OLED_ShowString(0, 16, "Stop:", OLED_8X16);
