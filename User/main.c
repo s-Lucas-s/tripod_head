@@ -15,6 +15,56 @@ int main(void)
     SCB->VTOR = FLASH_BASE | 0x2000;
     NVIC_SetVectorTable(NVIC_VectTab_FLASH, NVIC_VectTab_FLASH_OFFSET);
     __enable_irq();
+
+    GPIO_InitTypeDef GPIO_InitStructure;
+    USART_InitTypeDef USART_InitStructure;
+
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+    NVIC_InitTypeDef NVIC_InitStructure;
+    /* Enable GPIOA clock */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+    /* Enable USART1 clock */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+
+    /* Tx */
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    /* Rx */
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    /* USART resources configuration (Clock, GPIO pins and USART registers) ----*/
+    /* USART configured as follow:
+          - BaudRate = 115200 baud
+          - Word Length = 8 Bits
+          - One Stop Bit
+          - No parity
+          - Hardware flow control disabled (RTS and CTS signals)
+          - Receive and transmit enabled
+    */
+    USART_InitStructure.USART_BaudRate = 115200;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_Init(USART1, &USART_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+
+    NVIC_Init(&NVIC_InitStructure);
+
+    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE); // 使能接收中断
+    USART_Cmd(USART1, ENABLE);
+
     nvic_init();
     PID_Init();
     board_init();
@@ -108,4 +158,38 @@ float Check_angle(uint8_t addr)
         }
     }
     return Check_Motor_Cur_Pos;
+}
+
+static uint8_t USART1_ReceiveData = 0;
+static uint8_t USART1_ReceiveDataCount = 0;
+void check_Bootloader(uint8_t data)
+{
+    if (data == 0x7E)
+    {
+        if (++USART1_ReceiveDataCount >= 5)
+        {
+            USART1_ReceiveDataCount = 0;
+
+            // bootloader处理
+            IAP_WriteFlag(IAP_UPGRADE_FLAG);
+            NVIC_SystemReset();
+        }
+    }
+    else
+    {
+        USART1_ReceiveDataCount = 0;
+    }
+}
+
+// USART1中断服务函数：处理串口接收
+void USART1_IRQHandler(void)
+{
+    if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) // 接收中断
+    {
+        USART1_ReceiveData = USART_ReceiveData(USART1); // 读取接收数据
+
+        check_Bootloader(USART1_ReceiveData);
+
+        USART_ClearITPendingBit(USART1, USART_IT_RXNE); // 清除中断标志
+    }
 }
