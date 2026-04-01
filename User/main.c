@@ -21,13 +21,20 @@ int main(void)
     OLED_Init();
     Serial_Init();
     Timer_Init();
-    Serial_SendPacket(0xB6,0x6B,(uint8_t*)&RESET_KEY,1); // 串口发送数据包
-    //OLED_ShowString(0, 0, "Holle!", OLED_8X16);
-    // OLED_Update();
+    Serial_SendPacket(0xA5,0x5A,(uint8_t*)&RESET_KEY,1); // 串口发送数据包
+    OLED_ShowString(0, 0, "Holle!", OLED_8X16);
+    OLED_Update();
     
 
     while (1)
     {
+			
+			//Delay_ms(100);
+        Emm_V5_Vel_Control(1, 0, 400, 200, 0);
+			//Delay_ms(100);
+        Emm_V5_Vel_Control(2, 0, 400, 200, 0);
+			Delay_s(5);
+			while(1);
         uint8_t keyValue = 0;
         Key_LoopDetect();
         keyValue = Key_GetCode();// 获取单击按键值

@@ -37,6 +37,9 @@ pid_t Position_PID_y; // Y轴位置环PID参数
 void PID_Init(void)
 {
     // Y轴PID初始化为0，X轴同理可添加初始化
+    Position_PID_x.kp = 10;
+    Position_PID_x.ki = 0;
+    Position_PID_x.kd = 0;
     Position_PID_y.kp = 0;
     Position_PID_y.ki = 0;
     Position_PID_y.kd = 0;
@@ -52,8 +55,8 @@ float_t target_x = 0; // X轴目标坐标
 float_t target_y = 0; // Y轴目标坐标
 
 // 速度前馈系数：开环前馈，提升轨迹跟随平滑度
-const int32_t Kf_x = 10; // X轴前馈系数
-const int32_t Kf_y = 10; // Y轴前馈系数
+const int32_t Kf_x = 0; // X轴前馈系数
+const int32_t Kf_y = 0; // Y轴前馈系数
 
 /************************ PID内部静态变量 ************************/
 static int32_t xerr_last = 0;        // X轴上一帧误差，用于微分计算
@@ -193,6 +196,9 @@ void PID_Control(float now_x, float now_y)
     x_out = pid_x + feed_x;
     y_out = pid_y + feed_y;
 
+		x_out/=1;
+		y_out/=10;
+		y_out=x_out;
     // 输出限幅，保护电机
     LIMIT_VALUE_SYMMETRIC(x_out, MAX_SPEED);
     LIMIT_VALUE_SYMMETRIC(y_out, MAX_SPEED);
@@ -200,15 +206,15 @@ void PID_Control(float now_x, float now_y)
     // ===================== 电机驱动控制 =====================
     // X轴电机：根据输出正负判断方向
     if (x_out >= 0)
-        Emm_V5_Pos_Control(1, 0, (uint16_t)x_out, 0, 16000, 0, 1);
+        Emm_V5_Vel_Control(1, 0, (uint16_t)x_out, 0, 1);
     else
-        Emm_V5_Pos_Control(1, 1, (uint16_t)-x_out, 0, 16000, 0, 1);
+        Emm_V5_Vel_Control(1, 1, (uint16_t)-x_out, 0, 1);
 
     // Y轴电机：根据输出正负判断方向
     if (y_out >= 0)
-        Emm_V5_Pos_Control(2, 0, (uint16_t)y_out, 0, 14000, 0, 1);
+        Emm_V5_Vel_Control(2, 0, (uint16_t)y_out, 0, 1);
     else
-        Emm_V5_Pos_Control(2, 1, (uint16_t)-y_out, 0, 14000, 0, 1);
+        Emm_V5_Vel_Control(2, 1, (uint16_t)-y_out, 0, 1);
 
     Emm_V5_Synchronous_motion(0); // 电机同步运动执行
 

@@ -24,7 +24,9 @@ void handle_USART_BasicQuestion1(void)
     static u8 RxArrayCounter = 0;       // 全局字节计数器（0-9）
     static UnionFloat_t RxBuffer = {0}; // 定义一个6个成员的数组，可以存放6个数据，刚好放下一个数据包。
     static u8 RxState = 0;              // 接收状态，判断程序应该接收第一个帧头、第二个帧头、数据或帧尾。
+    // static bool okk = 0;              // 接收状态，判断程序应该接收第一个帧头、第二个帧头、数据或帧尾。
     com_data = USART_ReceiveData(USART3);
+    // if(okk==1)return;
     // 当RXState处于0时，为接收帧头1模式。若接收到帧头1（0xB6），将RXState置1，切换到接收帧头2模式，并将帧头1存入RxBuffer[0]的位置，RxCounter加一。
     if (RxState == 0 && com_data == 0xB6) // 0xB6帧头
     {
@@ -55,11 +57,12 @@ void handle_USART_BasicQuestion1(void)
                 RxState = 0;
                 if (data_packet_count == 1) // B6包收完：执行PID控制
                 {
-                    OLED_ShowFloatNum(0, 32, center_x, 3, 3, OLED_8X16);
-                    OLED_ShowFloatNum(0, 48, center_y, 3, 3, OLED_8X16);
-                    OLED_Update();
+//                     OLED_ShowFloatNum(0, 32, center_x, 3, 3, OLED_8X16);
+//                     OLED_ShowFloatNum(0, 48, center_y, 3, 3, OLED_8X16);
+//                     OLED_Update();
                     PID_Control((int32_t)(center_x), (int32_t)(center_y));
-                    data_packet_count = 0;
+                    // okk=1;
+                    // data_packet_count = 0;
                     return;
                 }
                 else
