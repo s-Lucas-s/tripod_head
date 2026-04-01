@@ -11,7 +11,6 @@
 #include "board.h"
 #include "usart.h"
 #include "Serial.h"
-#include "Serial1.h"
 #include "Key.h"
 
 /* ————————————变量———————————— */

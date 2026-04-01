@@ -1,5 +1,4 @@
 #include "sys.h"
-#include <math.h>  //正弦波使用
 
 bool Stop_flag = 0;
 bool Power_on_flag = 0;
@@ -21,7 +20,6 @@ int main(void)
     Key_Init();
     OLED_Init();
     Serial_Init();
-    Serial1_Init();
     Timer_Init();
     Serial_SendPacket(0xA5,0x5A,(uint8_t*)&RESET_KEY,1); // 串口发送数据包
     OLED_ShowString(0, 0, "Holle!", OLED_8X16);
@@ -35,8 +33,8 @@ int main(void)
         Emm_V5_Vel_Control(1, 0, 400, 200, 0);
 			//Delay_ms(100);
         Emm_V5_Vel_Control(2, 0, 400, 200, 0);
-			// Delay_s(5);
-			// while(1);
+			Delay_s(5);
+			while(1);
         uint8_t keyValue = 0;
         Key_LoopDetect();
         keyValue = Key_GetCode();// 获取单击按键值
@@ -74,17 +72,6 @@ int main(void)
         OLED_ShowString(0, 16, "Stop:", OLED_8X16);
         OLED_ShowNum(48, 16, Stop_flag, 1, OLED_8X16);
         OLED_Update();
-
-        static float t = 0.0f;
-        float ch1, ch2, ch3;
-        t += 0.05f;
-        // 3路不同频率波形，方便区分
-        ch1 = 500.0f * sin(t) + 500.0f;    // 通道1：0~1000，基频
-        ch2 = 500.0f * sin(2 * t) + 500.0f;// 通道2：2倍频
-        ch3 = 500.0f * sin(3 * t) + 500.0f;// 通道3：3倍频
-        // 发送数据
-        VOFA_Send3Ch(ch1, ch2, ch3);
-        Delay_ms(10);
     }
 }
 /*
