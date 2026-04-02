@@ -16,55 +16,7 @@ int main(void)
     SCB->VTOR = FLASH_BASE | 0x2000;
     NVIC_SetVectorTable(NVIC_VectTab_FLASH, NVIC_VectTab_FLASH_OFFSET);
     __enable_irq();
-
-    GPIO_InitTypeDef GPIO_InitStructure;
-    USART_InitTypeDef USART_InitStructure;
-
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-    NVIC_InitTypeDef NVIC_InitStructure;
-    /* Enable GPIOA clock */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-
-    /* Enable USART1 clock */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-
-    /* Tx */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-    /* Rx */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-    /* USART resources configuration (Clock, GPIO pins and USART registers) ----*/
-    /* USART configured as follow:
-          - BaudRate = 115200 baud
-          - Word Length = 8 Bits
-          - One Stop Bit
-          - No parity
-          - Hardware flow control disabled (RTS and CTS signals)
-          - Receive and transmit enabled
-    */
-    USART_InitStructure.USART_BaudRate = 115200;
-    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-    USART_InitStructure.USART_StopBits = USART_StopBits_1;
-    USART_InitStructure.USART_Parity = USART_Parity_No;
-    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_Init(USART1, &USART_InitStructure);
-
-    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-
-    NVIC_Init(&NVIC_InitStructure);
-
-    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE); // 使能接收中断
-    USART_Cmd(USART1, ENABLE);
+    Serial1_Init();
 
     nvic_init();
     PID_Init();
@@ -72,7 +24,6 @@ int main(void)
     Key_Init();
     OLED_Init();
     Serial_Init();
-    Serial1_Init();
     Timer_Init();
     Serial_SendPacket(0xA5,0x5A,(uint8_t*)&RESET_KEY,1); // 串口发送数据包
     OLED_ShowString(0, 0, "Holle!", OLED_8X16);
@@ -133,7 +84,7 @@ int main(void)
         ch2 = 500.0f * sin(2 * t) + 500.0f;// 通道2：2倍频
         ch3 = 500.0f * sin(3 * t) + 500.0f;// 通道3：3倍频
         // 发送数据
-        VOFA_Send3Ch(ch1, ch2, ch3);
+        // VOFA_Send3Ch(ch1, ch2, ch3);
         Delay_ms(10);
     }
 }

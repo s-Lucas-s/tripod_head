@@ -28,6 +28,7 @@ void Serial1_Init(void)
     USART_InitStructure.USART_Mode = USART_Mode_Tx; // 仅需发送，关闭接收节省资源
     USART_Init(USART1, &USART_InitStructure);
 
+    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE); // 使能接收中断
     // 使能串口1
     USART_Cmd(USART1, ENABLE);
 }
@@ -80,16 +81,4 @@ void VOFA_Send3Ch(float ch1, float ch2, float ch3)
 
     // 发送完整数据包
     Serial1_SendArray((uint8_t*)&frame, sizeof(frame));
-}
-
-// ===================== 串口1中断函数 =====================
-// 因仅用于发送波形，中断为空，不影响程序
-void USART1_IRQHandler(void)
-{
-    // 清空标志位，防止中断触发报错
-    if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
-    {
-        USART_ReceiveData(USART1);
-        USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-    }
 }
