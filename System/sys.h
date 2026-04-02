@@ -13,6 +13,7 @@
 #include "Serial.h"
 #include "Serial1.h"
 #include "Key.h"
+#include "IAP.h"
 
 /* ————————————变量———————————— */
 extern bool Stop_flag;
